@@ -1,3 +1,4 @@
+
 # 🧠 GPT Assistant
 
 GPT Assistant is a personal AI-powered assistant that combines OpenAI’s GPT with AWS services to create a smart, serverless productivity tool.
@@ -24,15 +25,15 @@ React · Tailwind · Vite · AWS Lambda · OpenAI · Google Calendar API · S3 �
 ## 🧱 Architecture Evolution
 
 ### 🧪 Stage 1 – Connect to OpenAI API
-
+![Stage 1](.github_info/stage-1.png)
 Basic chat handling via Lambda.
 
 ### 🔐 Stage 2 – Token Validation + Secure API
-
+![Stage 2](.github_info/stage-2.png)
 UI sends temporary user token, backend verifies and routes requests securely.
 
 ### 🚀 Stage 3 – Calendar Integration + Warm Lambda
-
+![Stage 3](.github_info/stage-3.png)
 - Connects OpenAI + Google Calendar  
 - Calendar Lambda upgraded for:
   - ✅ Direct invocation from GPT Lambda
@@ -128,6 +129,35 @@ env = os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
 
 ---
 
+## 📸 Screenshots & UI
+
+### ✅ Final UI Variants
+| Chat | Mobile | Dropbox |
+|------|--------|---------|
+| ![Chat Confirm](.github_info/gpt-assistant-chat-confirm.png) | ![Mobile UI](.github_info/gpt-assistant-ui-mobile.png) | ![Dropbox UI](.github_info/gpt-assistant-ui-dropbox.png) |
+| ![UI 2](.github_info/gpt-assistant-ui-2.png) | ![Main UI](.github_info/gpt-assistant-ui.png) | ![Rebuild UI](.github_info/gpt-assistant-revuild-ui.png) |
+
+---
+
+### 💬 In-App Chat View
+![Chat Window](.github_info/gpt-assistant-ui-chat.png)
+
+---
+
+### 🧱 Original Architecture Diagrams
+- ![Original Architecture 1](.github_info/original-architecture-1.png)
+- ![Original Architecture 2](.github_info/original-architecture-2.png)
+- ![Original UI](.github_info/original-ui.png)
+
+---
+
+### 📝 Legacy Notes
+> You can also view:
+- [📄 The Why.txt](.github_info/The%20Why.txt)
+- [📄 readme-old.txt](.github_info/readme-old.txt)
+
+---
+
 ## 🧩 Assistant's Growing Brain
 
 This system is designed to evolve into a smarter, more proactive assistant by:
@@ -151,5 +181,3 @@ Planned additions:
 - ✅ Basic Auth via CloudFront  
 - 🔐 Environment variables setup  
 - 🌐 Custom domain + HTTPS support  
-
----
