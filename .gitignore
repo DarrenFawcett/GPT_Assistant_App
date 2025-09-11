@@ -1,0 +1,53 @@
+# Node modules (core + frontend)
+node_modules/
+assistant-core/node_modules/
+dist/
+build/
+
+# Vite / React cache
+.vite/
+.cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# dotenv secrets
+.env
+.env.*
+assistant-core/.env
+**/.env
+
+# 🔒 Secrets & tokens (your .ignore_files setup)
+.ignore_files/
+*token*.json
+*cred*.json
+*credentials*.json
+calendar_dev_client_credentials.json
+token_dev.json
+
+# Local dev files
+*.local
+*.swo
+*.swp
+*.tmp
+
+# VS Code settings (optional, personal)
+.vscode/
+
+# Output from CI/CD tools
+coverage/
+*.tgz
+
+# AWS credentials (safety net)
+.aws/
+
+# 🔒 Secrets & tokens (your .ignore_files setup)
+.ignore_files/
+
