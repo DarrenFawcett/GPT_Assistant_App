@@ -1,4 +1,4 @@
-// src/gpt-assistant-ui.tsx
+// IMPORTS
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -10,6 +10,7 @@ import {
   Mic,
 } from 'lucide-react';
 
+// HOOKS
 import { ThemeStyles, GlowStyles, TypingDots } from './styles/ThemeStyles';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useTokens } from './hooks/useTokens';
@@ -17,11 +18,14 @@ import { useWakeUpPing } from './hooks/useWakeUpPing';
 import { useChatLogic } from './hooks/useChatLogic';
 import { useUploads } from './hooks/useUploads';
 
-// import Header from './components/Header';
-// import BucketPanel from './components/BucketPanel';
-// import CalendarPanel from './components/CalendarPanel';
-// import ChatPanel from './components/ChatPanel';
-// import InputBar from './components/InputBar';
+// COMPONENTS
+import TopTabs from './components/TopTabs.tsx';
+import ChatPanel from './components/ChatPanel';
+import CalendarPanel from './components/CalendarPanel';
+import TodoPanel from './components/TodoPanel';
+import NotesPanel from './components/NotesPanel';
+import EmailPanel from './components/EmailPanel';
+
 
 type Role = 'user' | 'assistant' | 'system';
 type Message = { id: string; role: Role; text: string };
@@ -72,6 +76,9 @@ export default function AssistantUI() {
   onDrop,
   onDragOver,
 } = useUploads(addMessage); // <- from useChatLogic
+
+const [activeTab, setActiveTab] = useState('Chat');
+
 
   // Gate UI until tokens exist (when API is configured)
   if (API_BASE && (!userToken || !apiToken)) {
@@ -136,6 +143,13 @@ export default function AssistantUI() {
               </div>
             </div>
           </div>
+
+          <TopTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+            {activeTab === 'Chat' && <ChatPanel />}
+            {activeTab === 'Calendar' && <CalendarPanel />}
+            {activeTab === 'To‑Do' && <TodoPanel />}
+            {activeTab === 'Notes' && <NotesPanel />}
+            {activeTab === 'Email' && <EmailPanel />}
 
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
             {/* Left column */}
