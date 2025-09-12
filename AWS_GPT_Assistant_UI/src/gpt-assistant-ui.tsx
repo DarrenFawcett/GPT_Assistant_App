@@ -10,6 +10,19 @@ import {
   Mic,
 } from 'lucide-react';
 
+import { ThemeStyles, GlowStyles, TypingDots } from './styles/ThemeStyles';
+import { useSpeechRecognition } from './hooks/useSpeechRecognition';
+import { useTokens } from './hooks/useTokens';
+import { useWakeUpPing } from './hooks/useWakeUpPing';
+import { useChatLogic } from './hooks/useChatLogic';
+import { useUploads } from './hooks/useUploads';
+
+// import Header from './components/Header';
+// import BucketPanel from './components/BucketPanel';
+// import CalendarPanel from './components/CalendarPanel';
+// import ChatPanel from './components/ChatPanel';
+// import InputBar from './components/InputBar';
+
 type Role = 'user' | 'assistant' | 'system';
 type Message = { id: string; role: Role; text: string };
 type UploadItem = {
@@ -23,401 +36,42 @@ type UploadItem = {
 const API_BASE = (import.meta as any).env?.VITE_API_BASE || '';
 
 /* ---------- Theme block (full palette) ---------- */
-function ThemeStyles() {
-  return (
-    <style>{`
-      .theme-ai-dark {
-        --app: radial-gradient(1400px 800px at 50% -50%, #2d2940d2 0%, #111421bf 60%, #0c101c 100%);
-        --ink: #e9eaf7;
-        --muted: #a1a8bd;
-        --card: #191d2c;
-        --surface: #141827;
-        --surface-2: #101421;
-        --edge: rgba(255, 255, 255, 0.06);
-        --shadow: 0 8px 24px rgba(10, 12, 20, 0.7);
-        --accent: #a78bfa;
-        --accent-2: #2241eeff;
 
-        --chat-user: linear-gradient(135deg, rgba(124,58,237,0.9), rgba(167,139,250,0.9));
-        --chat-assistant: linear-gradient(135deg, rgba(79,70,229,0.9), rgba(129,140,248,0.9));
-        --chat-user-ink: #fff;
-        --chat-assistant-ink: #fff;
-        
-        --chip: rgba(139, 92, 246, 0.15);
-        --success: #22c55e;
-        --warning: #f59e0b;
-        --glow: 0 0 18px rgba(167, 139, 250, 0.6);
-      }
-    `}</style>
-  );
-}
-
-/* ---------- Extra UI styles (glow cards, dashed dropzone, inputs) ---------- */
-function GlowStyles() {
-  return (
-    <style>{`
-
-      
-     /* === Glow Card (outer panels) === */
-.ai-glow-card {
-  position: relative;
-  border-radius: 16px;
-  background: var(--surface-2);
-  border: 1px solid var(--edge);
-  box-shadow:
-    0 0 2px rgba(243, 232, 232, 0.7),
-    0 0 10px rgba(146, 139, 250, 0.35),
-    0 0 30px rgba(92, 100, 246, 0.25);
-}
-
-.ai-glow-card::before {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  border-radius: inherit;
-  background: radial-gradient(
-    80% 80% at 50% 50%,
-    rgba(167, 139, 250, 0.7) 0%,
-    rgba(139, 92, 246, 0.35) 40%,
-    rgba(139, 92, 246, 0) 80%
-  );
-  z-index: -1;
-  filter: blur(45px);
-  opacity: 1;
-}
-
-/* Dotted drop zone */
-.ai-dash {
-  border: 2px dashed rgba(148, 163, 184, 0.35);
-}
-
-/* === Input + Buttons unified style === */
-.ai-input,
-.ai-icon-btn {
-  background: linear-gradient(135deg, #111a2f, #07162f); /* blue gradient */
-  border-radius: 12px;
-  border: 1px solid rgba(59, 130, 246, 0.6);
-  color: #ffffff;
-  box-shadow:
-    0 0 2px rgba(243, 232, 232, 0.7),
-    0 0 10px rgba(146, 139, 250, 0.35),
-    0 0 30px rgba(92, 100, 246, 0.25);
-  transition: all 0.2s ease;
-}
-
-/* === Solid Send Button === */
-.ai-send {
-  background: #5538c8cc; /* solid violet-blue */
-  border: 1px solid rgba(59, 130, 246, 0.9);
-  color: #fff;
-  border-radius: 12px;
-  box-shadow:
-    0 0 3px rgba(59, 130, 246, 0.7),
-    0 0 8px rgba(92, 100, 246, 0.5);
-  transition: all 0.2s ease;
-}
-
-/* === Hover + Focus States === */
-.ai-input:focus,
-.ai-icon-btn:hover,
-.ai-send:hover {
-  border-color: #fff;
-  transform: translateY(-1px);
-  box-shadow:
-    0 0 4px rgba(59, 130, 246, 0.8),
-    0 0 12px rgba(92, 100, 246, 0.5);
-}
-
-/* === Active click effect === */
-.ai-send:active,
-.ai-icon-btn:active {
-  transform: translateY(1px);
-}
-
-/* === Chat bubble styling === */
-.ai-bubble-glow {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: var(--surface-2);
-  border-radius: 12px;
-}
-
-/* === GPT Icon Glow (header icon) === */
-.ai-icon-glow {
-  border-radius: 50%;
-  border: 2px solid rgba(59, 130, 246, 0.7);
-  padding: 6px;
-  background: radial-gradient(
-    circle at 50% 50%,
-    rgba(59, 130, 246, 0.15),
-    rgba(17, 24, 39, 0.95)
-  );
-  box-shadow:
-    0 0 3px rgba(243, 232, 232, 0.7),
-    0 0 10px rgba(146, 139, 250, 0.35),
-    0 0 20px rgba(92, 100, 246, 0.25);
-}
-
-
-
-    `}</style>
-  );
-}
-
-/* ---------- Typing dots (bounce) ---------- */
-function TypingDots() {
-  return (
-    <span className='inline-flex items-center gap-1 opacity-80'>
-      <span
-        className='w-1.5 h-1.5 rounded-full bg-current animate-bounce'
-        style={{ animationDelay: '0ms' }}
-      />
-      <span
-        className='w-1.5 h-1.5 rounded-full bg-current animate-bounce'
-        style={{ animationDelay: '120ms' }}
-      />
-      <span
-        className='w-1.5 h-1.5 rounded-full bg-current animate-bounce'
-        style={{ animationDelay: '240ms' }}
-      />
-    </span>
-  );
-}
 
 export default function AssistantUI() {
+   // Wake-up hook
+  useWakeUpPing();
+
   // 1) Theme
   const [theme] = useState<'dark' | 'light'>('dark');
 
-  // 2) 🎤 Mic state
+  // 2) Mic state
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
 
-  // 3) Auth state
-  const [userToken, setUserToken] = useState<string | null>(
-    localStorage.getItem('userToken')
-  );
-  const [apiToken, setApiToken] = useState<string | null>(
-    localStorage.getItem('apiToken')
-  );
-  const hasBootstrapped = useRef(false);
+  // 3) Auth state – moved to custom hook!
+  const { userToken, apiToken, setUserToken, setApiToken } = useTokens();
 
-  // 4) Thinking spinner
-  const [isThinking, setIsThinking] = useState(false);
-
-  // 5) Chat state (put BEFORE mic useEffect!)
-  const [messages, setMessages] = useState<Message[]>([
-    { id: crypto.randomUUID(), role: 'assistant', text: 'How can I assist you today?' }
-  ]);
-  const [input, setInput] = useState('');
-  const latestMessagesRef = useRef<Message[]>(messages);
-  useEffect(() => {
-    latestMessagesRef.current = messages;
-  }, [messages]);
-
-  // 6) 🎤 Mic effect (now input is defined!)
-  useEffect(() => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      console.warn("❌ SpeechRecognition API not supported");
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
-    recognition.interimResults = false;
-    recognition.continuous = true;
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[event.results.length - 1][0].transcript;
-      setInput((prev) => (prev ? prev + " " + transcript : transcript));
-    };
-
-    recognition.onend = () => {
-      if (isRecording) recognition.start();
-    };
-
-    recognition.onerror = (event: any) => {
-      console.warn("Speech error:", event.error);
-    };
-
-    recognitionRef.current = recognition;
-  }, [isRecording]);
-
-  // 7)  Token effect
-  const requestTokens = async () => {
-    if (!API_BASE) return;
-    if (userToken && apiToken) return;
-
-    const secret = prompt('🔐 No token found.\nEnter your secret access word:');
-    if (!secret) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secretWord: secret }),
-      });
-      const data = await res.json();
-      if (res.ok && data.userToken === 'ACCESS_GRANTED') {
-        localStorage.setItem('userToken', data.userToken);
-        localStorage.setItem('apiToken', data.apiToken);
-        setUserToken(data.userToken);
-        setApiToken(data.apiToken);
-      } else {
-        alert('❌ Invalid secret word');
-      }
-    } catch (e) {
-      console.error('Token error:', e);
-      alert('⚠️ Error calling /token');
-    }
-  };
-
-  // 8)  Wram Up effect
-  useEffect(() => {
-    if (hasBootstrapped.current) return;
-    hasBootstrapped.current = true;
-
-    const wake = async () => {
-      try {
-        if (!API_BASE) return;
-
-        const start = performance.now(); // ⏱️ Start timer
-        console.log('🧊 Sending wake-up ping…');
-
-        const res = await fetch(`${API_BASE}/ping`, {
-          method: 'GET',
-          cache: 'no-store',
-          keepalive: true,
-        });
-
-        const duration = performance.now() - start; // ⏱️ End timer
-        const result = await res.json(); // Just for debug, not required
-
-        console.log(
-          '✅ Warm-up ping sent',
-          result,
-          `(${duration.toFixed(1)}ms)`
-        );
-      } catch (e) {
-        console.warn('Wake-up failed:', e);
-      }
-    };
-
-    (async () => {
-      await requestTokens();
-      await wake();
-    })();
-  }, []);
-
-
-  const addMessage = (role: Role, text: string) => {
-    setMessages((m) => [...m, { id: crypto.randomUUID(), role, text }]);
-  };
+  // 5) Chat state
+ const {
+  messages,
+  setInput,
+  input,
+  isThinking,
+  onSend,
+  addMessage,
+} = useChatLogic();
 
   // --- Uploads (mock Stage 1) ---
-  const [uploads, setUploads] = useState<UploadItem[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const openFilePicker = () => fileInputRef.current?.click();
-  
-
-  const handleFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setIsUploading(true);
-    const items: UploadItem[] = Array.from(files).map((f) => ({
-      id: crypto.randomUUID(),
-      name: f.name,
-      size: f.size,
-      status: 'uploaded',
-    }));
-    await new Promise((r) => setTimeout(r, 800));
-    setUploads((u) => [...items, ...u]);
-    setIsUploading(false);
-    addMessage(
-      'assistant',
-      `✅ (Mock) ${files.length} file(s) sent to S3 bucket`
-    );
-  };
-
-  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleFiles(e.dataTransfer.files);
-  }, []);
-  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  // --- Send ---
-  const onSend = async () => {
-    const text = input.trim();
-    if (!text) return;
-
-    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', text };
-    const tempId = crypto.randomUUID();
-
-    setMessages((m) => [
-      ...m,
-      userMsg,
-      { id: tempId, role: 'assistant', text: '...' },
-    ]);
-    setInput('');
-    setIsThinking(true);
-
-    try {
-      if (!API_BASE) {
-        setMessages((m) =>
-          m.map((msg) =>
-            msg.id === tempId
-              ? { ...msg, text: `👋 (Mock) You said: "${text}"` }
-              : msg
-          )
-        );
-        return;
-      }
-
-      const history = latestMessagesRef.current
-        .filter((m) => m.text !== '...')
-        .map((m) => ({ role: m.role, content: m.text }));
-
-      const payload = {
-        messages: [...history, { role: 'user', content: text }],
-      };
-
-      const res = await fetch(`${API_BASE}/CHAT`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Access-Token': apiToken || '',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`${res.status} ${res.statusText}: ${errText}`);
-      }
-
-      const data = await res.json();
-      setMessages((m) =>
-        m.map((msg) =>
-          msg.id === tempId ? { ...msg, text: data.reply || '(no reply)' } : msg
-        )
-      );
-    } catch (err: any) {
-      console.error('❌ fetch error:', err);
-      setMessages((m) =>
-        m.map((msg) =>
-          msg.id === tempId
-            ? { ...msg, text: `⚠️ Error: ${err?.message || String(err)}` }
-            : msg
-        )
-      );
-    } finally {
-      setIsThinking(false);
-    }
-  };
+  const {
+  uploads,
+  isUploading,
+  fileInputRef,
+  openFilePicker,
+  handleFiles,
+  onDrop,
+  onDragOver,
+} = useUploads(addMessage); // <- from useChatLogic
 
   // Gate UI until tokens exist (when API is configured)
   if (API_BASE && (!userToken || !apiToken)) {
@@ -630,24 +284,25 @@ export default function AssistantUI() {
 
                   {/* Voice/Mic button */}
                   <button
-  className={`hidden md:inline-flex ai-icon-btn px-3 py-2 ${
-    isRecording ? 'border-green-400' : ''
-  }`}
-  onClick={() => {
-    if (!recognitionRef.current) return;
-    if (isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
-    }
-  }}
-  title={isRecording ? 'Stop voice input' : 'Start voice input'}
->
-  <Mic className='w-4 h-4' />
-</button>
-
+                    className={`hidden md:inline-flex ai-icon-btn px-3 py-2 ${
+                      isRecording ? 'border-green-400' : ''
+                    }`}
+                    onClick={() => {
+                      if (!recognitionRef.current) return;
+                      if (isRecording) {
+                        recognitionRef.current.stop();
+                        setIsRecording(false);
+                      } else {
+                        recognitionRef.current.start();
+                        setIsRecording(true);
+                      }
+                    }}
+                    title={
+                      isRecording ? 'Stop voice input' : 'Start voice input'
+                    }
+                  >
+                    <Mic className='w-4 h-4' />
+                  </button>
 
                   <input
                     className='flex-1 ai-input ai-input-glow px-3 py-2'
