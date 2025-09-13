@@ -1,21 +1,41 @@
-// TopTabs.tsx
-import { useState } from 'react';
+// src/components/TopTabs.tsx
+import {
+  MessageSquare,
+  CalendarDays,
+  ListTodo,
+  NotebookText,
+  Mail,
+} from 'lucide-react';
 
-const tabs = ['Chat', 'Calendar', 'To‑Do', 'Notes', 'Email'];
+const tabOptions = [
+  { name: 'Chat', icon: <MessageSquare className="w-4 h-4" /> },
+  { name: 'Calendar', icon: <CalendarDays className="w-4 h-4" /> },
+  { name: 'To-Do', icon: <ListTodo className="w-4 h-4" /> },
+  { name: 'Notes', icon: <NotebookText className="w-4 h-4" /> },
+  { name: 'Email', icon: <Mail className="w-4 h-4" /> },
+];
 
-export default function TopTabs({ activeTab, setActiveTab }: { activeTab: string; setActiveTab: (tab: string) => void }) {
+export default function TopTabs({
+  activeTab,
+  setActiveTab,
+}: {
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
+}) {
   return (
-    <div className="flex gap-4 mb-6">
-      {tabs.map((tab) => (
+    <div className="flex justify-center gap-3 mt-2 mb-4">
+      {tabOptions.map((tab) => (
         <button
-          key={tab}
-          onClick={() => setActiveTab(tab)}
-          className={`px-4 py-2 rounded-xl shadow-md text-sm font-medium transition-all duration-200
-            ${activeTab === tab
+          key={tab.name}
+          onClick={() => setActiveTab(tab.name)}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+            activeTab === tab.name
               ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
-              : 'bg-[#151a25] text-gray-300 hover:bg-[#1d2330]'}`}
+              : 'text-gray-300 hover:bg-[#1d2330]'
+          }`}
         >
-          {tab}
+          {tab.icon}
+          <span>{tab.name}</span>
         </button>
       ))}
     </div>

@@ -1,6 +1,7 @@
 // IMPORTS
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+
 import {
   UploadCloud,
   Calendar,
@@ -25,6 +26,8 @@ import CalendarPanel from './components/CalendarPanel';
 import TodoPanel from './components/TodoPanel';
 import NotesPanel from './components/NotesPanel';
 import EmailPanel from './components/EmailPanel';
+import TabContent from './components/TabContent';
+import SideInfoCard from './components/SideInfoCard';
 
 
 type Role = 'user' | 'assistant' | 'system';
@@ -144,12 +147,12 @@ const [activeTab, setActiveTab] = useState('Chat');
             </div>
           </div>
 
-          <TopTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-            {activeTab === 'Chat' && <ChatPanel />}
-            {activeTab === 'Calendar' && <CalendarPanel />}
-            {activeTab === 'To‑Do' && <TodoPanel />}
-            {activeTab === 'Notes' && <NotesPanel />}
-            {activeTab === 'Email' && <EmailPanel />}
+            <div className="w-full px-4 mb-6">
+              <div className="mt-6">
+                <TopTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+                <TabContent activeTab={activeTab} />
+              </div>
+            </div>
 
           <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
             {/* Left column */}
@@ -237,31 +240,18 @@ const [activeTab, setActiveTab] = useState('Chat');
               </motion.div>
 
               {/* Quick Calendar card with outer glow */}
-              <motion.div
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className='ai-glow-card p-4'
-              >
-                <div className='flex items-center gap-2 mb-3'>
-                  <Calendar className='w-5 h-5' />
-                  <div className='font-medium'>Quick Calendar</div>
-                </div>
-                <div className='text-sm'>
-                  Type a natural sentence in chat like:
-                </div>
-                <div className='text-xs mt-1' style={{ color: 'var(--muted)' }}>
-                  “Dentist on 9th Dec at 3pm for 30 minutes.”
-                </div>
-              </motion.div>
+              <SideInfoCard activeTab={activeTab} />
             </div>
 
             {/* Right: Chat panel with outer glow */}
             <div className='md:col-span-2 flex flex-col ai-glow-card overflow-hidden'>
               <div className='flex-1 overflow-auto p-4 space-y-3'>
+                
                 {messages.map((m) => (
                   <div
                     key={m.id}
                     className='max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow'
+                    
                     style={{
                       background:
                         m.role === 'assistant'
@@ -336,8 +326,7 @@ const [activeTab, setActiveTab] = useState('Chat');
                   className='mt-2 text-[11px]'
                   style={{ color: 'var(--muted)' }}
                 >
-                  This is a <strong>mock</strong> if no API is configured. Drag
-                  & drop works on desktop; tap the bucket on mobile.
+                  Drag & drop works on desktop; tap the bucket on mobile.
                 </div>
               </div>
             </div>
