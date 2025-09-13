@@ -28,6 +28,7 @@ import NotesPanel from './components/NotesPanel';
 import EmailPanel from './components/EmailPanel';
 import TabContent from './components/TabContent';
 import SideInfoCard from './components/SideInfoCard';
+import UploadPanel from './components/UploadPanel.tsx';
 
 
 type Role = 'user' | 'assistant' | 'system';
@@ -154,108 +155,35 @@ const [activeTab, setActiveTab] = useState('Chat');
               </div>
             </div>
 
-          <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-            {/* Left column */}
-            <div className='md:col-span-1 space-y-4'>
-              {/* S3 Bucket card with outer glow */}
-              <motion.div
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className='ai-glow-card p-4'
-              >
-                <div className='flex items-center gap-2 mb-3'>
-                  <UploadCloud className='w-5 h-5' />
-                  <div className='font-medium'>S3 Photo Bucket</div>
-                </div>
-
-                {/* Always-visible dotted drop area */}
-                <div
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Left column */}
+              <div className="md:col-span-1 space-y-4">
+                <SideInfoCard activeTab={activeTab} />
+                <UploadPanel
+                  uploads={uploads}
+                  isUploading={isUploading}
+                  fileInputRef={fileInputRef}
+                  openFilePicker={openFilePicker}
+                  handleFiles={handleFiles}
                   onDrop={onDrop}
                   onDragOver={onDragOver}
-                  className='ai-dash rounded-xl h-40 cursor-pointer grid place-items-center mb-3'
-                  onClick={openFilePicker}
-                  title='Drag & drop or click'
-                >
-                  {isUploading ? (
-                    <div className='text-sm' style={{ color: 'var(--muted)' }}>
-                      Uploading…
-                    </div>
-                  ) : (
-                    <div
-                      className='flex flex-col items-center gap-2'
-                      style={{ color: 'var(--muted)' }}
-                    >
-                      <ImageIcon className='w-6 h-6' />
-                      <div className='text-sm'>Drag & drop images here</div>
-                      <div className='text-xs'>or click to select</div>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  className='w-full rounded-xl py-3 text-sm flex items-center justify-center gap-2'
-                  onClick={openFilePicker}
-                  style={{
-                    background: 'var(--surface)',
-                    border: '1px solid var(--edge)',
-                  }}
-                >
-                  <UploadCloud className='w-4 h-4' /> Choose image(s)
-                </button>
-
-                <input
-                  ref={fileInputRef}
-                  type='file'
-                  accept='image/*'
-                  multiple
-                  className='hidden'
-                  onChange={(e) => handleFiles(e.target.files)}
                 />
+              </div>  
 
-                {/* Upload list */}
-                <div className='mt-4 space-y-2 max-h-40 overflow-auto pr-1'>
-                  {uploads.length === 0 ? (
-                    <div className='text-xs' style={{ color: 'var(--muted)' }}>
-                      No uploads yet.
-                    </div>
-                  ) : (
-                    uploads.map((u) => (
-                      <div
-                        key={u.id}
-                        className='flex items-center gap-2 text-xs rounded-lg px-2 py-2'
-                        style={{ background: 'rgba(0,0,0,.25)' }}
-                      >
-                        <CheckCircle2 className='w-3.5 h-3.5' />
-                        <div className='truncate'>{u.name}</div>
-                        <div
-                          className='ml-auto'
-                          style={{ color: 'var(--muted)' }}
-                        >
-                          {Math.ceil(u.size / 1024)} KB
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Quick Calendar card with outer glow */}
-              <SideInfoCard activeTab={activeTab} />
+              {/* Right column */}
+              <ChatPanel
+                messages={messages}
+                input={input}
+                setInput={setInput}
+                onSend={onSend}
+                isThinking={isThinking}
+                isRecording={isRecording}
+                setIsRecording={setIsRecording}
+                recognitionRef={recognitionRef}
+                openFilePicker={openFilePicker}
+              />
             </div>
-            
-            <ChatPanel
-              messages={messages}
-              input={input}
-              setInput={setInput}
-              onSend={onSend}
-              isThinking={isThinking}
-              isRecording={isRecording}
-              setIsRecording={setIsRecording}
-              recognitionRef={recognitionRef}
-              openFilePicker={openFilePicker}
-            />
 
-          </div>
         </div>
       </div>{' '}
       {/* /app */}

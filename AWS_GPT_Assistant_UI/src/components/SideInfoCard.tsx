@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 function SideInfoCard({ activeTab }: { activeTab: string }) {
-  const cardBase = 'mt-4 p-4 rounded-xl border border-slate-700 ai-glow-card';
+  const cardBase = ' p-4 rounded-xl border border-slate-700 ai-glow-card';
   const titleStyle = 'text-white font-semibold mb-2 flex items-center gap-2';
   const textStyle = 'text-slate-300 text-sm';
   const hintStyle = 'text-slate-400 text-xs block mt-1';
