@@ -1,5 +1,8 @@
-// 👇 Hard-coded for now, swap to env later if needed
-export const API_BASE = "http"
+// src/config/api.ts
+
+// Load env vars
+export const API_BASE = import.meta.env.VITE_API_BASE;
+export const TEST_KEY = import.meta.env.VITE_TEST_KEY;
 
 // Core endpoints
 export const CHAT_URL = `${API_BASE}/chat`;
@@ -7,7 +10,7 @@ export const CALENDAR_URL = `${API_BASE}/calendar`;
 export const PING_URL = `${API_BASE}/ping`;
 export const TOKEN_URL = `${API_BASE}/token`;
 
-// Future modules (stub for now, point to API Gateway when ready)
+// Future modules
 export const TODO_URL = `${API_BASE}/todo`;
 export const NOTES_URL = `${API_BASE}/notes`;
 export const EMAIL_URL = `${API_BASE}/email`;

@@ -1,44 +1,83 @@
-import { TypingDots } from "../styles/ThemeStyles";
+import { useState } from "react";
 import InputRow from "./InputRow";
-import StarterBubble from "./StarterBubble";
-import { starterTexts } from "./StarterBubble";
+import { TypingDots } from "../styles/ThemeStyles";
+import { TODO_URL } from "../config/api";
 
-
-interface ChatPanelProps {
-  messages?: { id: string; role: "user" | "assistant"; text: string }[];
-  input: string;
-  setInput: (val: string) => void;
-  onSend: (val: string) => void;
-  isThinking?: boolean;
-  isRecording?: boolean;
-  recognitionRef?: any;
-  openFilePicker?: () => void;
+interface TaskMessage {
+  role: "user" | "assistant";
+  text: string;
 }
 
-export default function ChatPanel({
-  messages = [],
-  input,
-  setInput,
-  onSend,
-  isThinking,
+export default function ToDoPanel({
   isRecording,
   recognitionRef,
   openFilePicker,
-}: ChatPanelProps) {
+}: {
+  isRecording?: boolean;
+  recognitionRef?: any;
+  openFilePicker?: () => void;
+}) {
+  const [messages, setMessages] = useState<TaskMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+
+  const addTask = async () => {
+    const text = input.trim();
+    if (!text) return;
+
+    // user bubble
+    setMessages((prev) => [...prev, { role: "user", text }]);
+    setInput("");
+
+    setIsThinking(true);
+    try {
+      const res = await fetch(TODO_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tab: "To-Do",
+          messages: [{ role: "user", content: text }],
+        }),
+      });
+
+      const data = await res.json();
+      const replyText =
+        data.reply ||
+        (data.tasks?.length
+          ? data.tasks.map((t: any) => `✅ ${t}`).join("\n")
+          : "⚠️ No reply from server");
+
+      setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: "⚠️ Error talking to To-Do API" },
+      ]);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
-      {/* Message list */}
-      <div className="flex-1 overflow-auto p-4 space-y-3">
+      {/* Always-visible intro bubble */}
+      <div className="p-4">
+        <div
+          className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
+          style={{
+            background: "var(--chat-assistant)",
+            color: "var(--chat-assistant-ink)",
+          }}
+        >
+          Add tasks like: “Buy milk” or “Finish portfolio site”
+        </div>
+      </div>
 
-        {/* 👇 Starter bubble when empty */}
-        {messages.length === 0 && (
-          <StarterBubble text={starterTexts.todo} />
-        )}
-        
-
-        {messages.map((m) => (
+      {/* To-Do history */}
+      <div className="flex-1 overflow-auto px-4 space-y-3">
+        {messages.map((m, idx) => (
           <div
-            key={m.id}
+            key={idx}
             className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
             style={{
               background:
@@ -69,19 +108,19 @@ export default function ChatPanel({
         )}
       </div>
 
-      {/* InputRow (reused across all tabs) */}
+      {/* Input row */}
       <InputRow
         placeholder='Add task… e.g., "Pay bills on Friday"'
         value={input}
         onChange={setInput}
-        onSubmit={() => onSend(input)}
+        onSubmit={addTask}
         showUpload={true}
         showMic={true}
         isRecording={isRecording}
         recognitionRef={recognitionRef}
         openFilePicker={openFilePicker}
-        buttonLabel="Send"
-        helperText="Drag & drop works on desktop; tap the bucket on mobile."
+        buttonLabel="Add"
+        helperText="Click a task to mark it complete."
       />
     </div>
   );

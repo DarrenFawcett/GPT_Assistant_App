@@ -1,47 +1,68 @@
+// src/components/NotesPanel.tsx
+import { useState } from "react";
 import { TypingDots } from "../styles/ThemeStyles";
 import InputRow from "./InputRow";
-import StarterBubble, { starterTexts } from "./StarterBubble";
+import { NOTES_URL } from "../config/api";
+import { starterTexts } from "./StarterBubble";
 
-interface NotesPanelProps {
-  messages?: { id: string; role: "user" | "assistant"; text: string }[];
-  input: string;
-  setInput: (val: string) => void;
-  onSend: (val: string) => void;
-  isThinking?: boolean;
-  isRecording?: boolean;
-  recognitionRef?: any;
-  openFilePicker?: () => void;
+interface NoteMessage {
+  role: "user" | "assistant";
+  text: string;
 }
 
 export default function NotesPanel({
-  messages = [],
-  input,
-  setInput,
-  onSend,
-  isThinking,
   isRecording,
   recognitionRef,
   openFilePicker,
-}: NotesPanelProps) {
-  // 👇 Ensure starter text appears when empty
-  const displayMessages =
-    messages.length === 0
-      ? [
-          {
-            id: "welcome-notes",
-            role: "assistant" as const,
-            text: starterTexts.notes,
-          },
-        ]
-      : messages;
+}: {
+  isRecording?: boolean;
+  recognitionRef?: any;
+  openFilePicker?: () => void;
+}) {
+  // 👇 initialize with welcome message so it always stays
+  const [messages, setMessages] = useState<NoteMessage[]>([
+    { role: "assistant", text: starterTexts.notes },
+  ]);
+  const [input, setInput] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+
+  const addNote = async () => {
+    const text = input.trim();
+    if (!text) return;
+
+    // user bubble
+    setMessages((prev) => [...prev, { role: "user", text }]);
+    setInput("");
+
+    setIsThinking(true);
+    try {
+      const res = await fetch(NOTES_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+
+      const data = await res.json();
+      const replyText = data.reply || "⚠️ No reply from Notes Lambda";
+
+      setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: "⚠️ Error saving note" },
+      ]);
+    } finally {
+      setIsThinking(false);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
-      {/* Message list */}
+      {/* Notes list */}
       <div className="flex-1 overflow-auto p-4 space-y-3">
-        {displayMessages.map((m) => (
+        {messages.map((m, idx) => (
           <div
-            key={m.id}
+            key={idx}
             className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
             style={{
               background:
@@ -77,7 +98,7 @@ export default function NotesPanel({
         placeholder='Jot down a note… e.g., "Meeting takeaways"'
         value={input}
         onChange={setInput}
-        onSubmit={() => onSend(input)}
+        onSubmit={addNote}
         showUpload={true}
         showMic={true}
         isRecording={isRecording}

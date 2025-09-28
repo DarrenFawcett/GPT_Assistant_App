@@ -8,3 +8,19 @@ node server.mjs
 # Run the website
 
 npm run dev
+
+
+
+
+--------------------------------
+
+tests:
+
+curl -X POST "https://mwhut1gvcf.execute-api.eu-west-2.amazonaws.com/prod/calendar" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tab": "Calendar",
+    "messages": [
+      { "role": "user", "content": "When is my next dentist appointment?" }
+    ]
+  }'

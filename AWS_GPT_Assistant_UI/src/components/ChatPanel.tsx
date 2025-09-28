@@ -1,30 +1,85 @@
+import { useState } from "react";
 import { TypingDots } from "../styles/ThemeStyles";
 import InputRow from "./InputRow";
-import StarterBubble from "./StarterBubble";
-import { starterTexts } from "./StarterBubble";
+import { CHAT_URL } from "../config/api";
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
+interface ChatPanelProps {
+  isRecording?: boolean;
+  recognitionRef?: any;
+  openFilePicker?: () => void;
+  onSend?: (val: string) => void;
+}
 
 export default function ChatPanel({
-  messages = [],
-  input = "",
-  setInput,
-  onSend,
-  isThinking,
   isRecording,
   recognitionRef,
   openFilePicker,
-}: Props) {
+  onSend,
+}: ChatPanelProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+
+  const addMessage = async () => {
+    const text = input.trim();
+    if (!text) return;
+
+    // user bubble
+    setMessages((prev) => [...prev, { role: "user", text }]);
+    setInput("");
+
+    onSend?.(text);
+
+    setIsThinking(true);
+    try {
+      const res = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tab: "Chat",
+          messages: [{ role: "user", content: text }],
+        }),
+      });
+
+      const data = await res.json();
+      const replyText = data.reply || "⚠️ No reply from server";
+
+      setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: "⚠️ Error talking to GPT" },
+      ]);
+    } finally {
+      setIsThinking(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
-      {/* "Poster" intro message — always visible at top */}
+      {/* Always-visible intro bubble */}
       <div className="p-4">
-        <StarterBubble text={starterTexts.chat} />
+        <div
+          className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
+          style={{
+            background: "var(--chat-assistant)",
+            color: "var(--chat-assistant-ink)",
+          }}
+        >
+          How can I assist you today?
+        </div>
       </div>
 
-      {/* Actual chat history */}
+      {/* Chat history */}
       <div className="flex-1 overflow-auto px-4 space-y-3">
-        {messages.map((m) => (
+        {messages.map((m, idx) => (
           <div
-            key={m.id}
+            key={idx}
             className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
             style={{
               background:
@@ -38,7 +93,7 @@ export default function ChatPanel({
               marginLeft: m.role === "assistant" ? undefined : "auto",
             }}
           >
-            <span>{m.text}</span>
+            {m.text}
           </div>
         ))}
 
@@ -59,17 +114,16 @@ export default function ChatPanel({
       <InputRow
         placeholder='Ask anything… e.g., "Add dentist 9 Dec 3pm"'
         value={input}
-        onChange={(val) => setInput(val)}   // 👈 now it receives the string
-        onSubmit={() => onSend(input)}
+        onChange={setInput}
+        onSubmit={addMessage}
         showUpload={true}
         showMic={true}
         isRecording={isRecording}
         recognitionRef={recognitionRef}
         openFilePicker={openFilePicker}
         buttonLabel="Send"
-        helperText="Drag & drop works on desktop; tap the bucket on mobile."
+        helperText="Type your message and hit send."
       />
-
     </div>
   );
 }
