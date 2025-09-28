@@ -1,13 +1,12 @@
 // src/hooks/useChatLogic.ts
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { CHAT_URL, CALENDAR_URL, authHeaders } from '../config/api';
 
 type Role = 'user' | 'assistant' | 'system';
 type Message = { id: string; role: Role; text: string };
 
-// ✅ Get VITE_API_BASE from environment
-const API_BASE = (import.meta as any).env?.VITE_API_BASE || '';
-
 export function useChatLogic(apiToken?: string) {
+  // 👇 Seed with starter assistant message
   const [messages, setMessages] = useState<Message[]>([
     {
       id: crypto.randomUUID(),
@@ -19,57 +18,34 @@ export function useChatLogic(apiToken?: string) {
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
 
-  const latestMessagesRef = useRef<Message[]>(messages);
-  useEffect(() => {
-    latestMessagesRef.current = messages;
-  }, [messages]);
-
+  // ✅ Utility to push a new message into the log
   const addMessage = (role: Role, text: string) => {
     setMessages((m) => [...m, { id: crypto.randomUUID(), role, text }]);
   };
 
-  const onSend = async () => {
-    const text = input.trim();
-    if (!text) return;
+  // ✅ Main send function
+  const onSend = async (text?: string, tab: string = 'chat') => {
+    const raw = typeof text === 'string' ? text : input;
+    const userText = (raw ?? '').toString().trim();
+    if (!userText) return;
 
-    const userMsg: Message = { id: crypto.randomUUID(), role: 'user', text };
-    const tempId = crypto.randomUUID();
+    // push user message
+    addMessage('user', userText);
 
-    setMessages((m) => [
-      ...m,
-      userMsg,
-      { id: tempId, role: 'assistant', text: '...' },
-    ]);
+    // clear input box immediately
     setInput('');
+
     setIsThinking(true);
 
     try {
-      if (!API_BASE) {
-        setMessages((m) =>
-          m.map((msg) =>
-            msg.id === tempId
-              ? { ...msg, text: `👋 (Mock) You said: "${text}"` }
-              : msg
-          )
-        );
-        return;
-      }
+      const endpoint = tab === 'calendar' ? CALENDAR_URL : CHAT_URL;
 
-      const history = latestMessagesRef.current
-        .filter((m) => m.text !== '...')
-        .map((m) => ({ role: m.role, content: m.text }));
-
-      const payload = {
-        messages: [...history, { role: 'user', content: text }],
-      };
-
-      const res = await fetch(`${API_BASE}/CHAT`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Access-Token': apiToken || '',
-        },
-        body: JSON.stringify(payload),
+        headers: authHeaders(apiToken),
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: userText }],
+        }),
       });
 
       if (!res.ok) {
@@ -78,32 +54,38 @@ export function useChatLogic(apiToken?: string) {
       }
 
       const data = await res.json();
-      setMessages((m) =>
-        m.map((msg) =>
-          msg.id === tempId ? { ...msg, text: data.reply || '(no reply)' } : msg
-        )
-      );
+
+      // ✅ Flexible reply selection (calendar + chat safe)
+      const reply =
+        data.reply ||
+        data.summary ||
+        (data.htmlLink
+          ? `📅 Event created: ${data.htmlLink}`
+          : data.event
+          ? `📅 ${data.event.summary} — ${
+              data.event.start?.dateTime || data.event.start?.date || '(no date)'
+            }`
+          : data.events
+          ? data.events
+              .map(
+                (e: any) =>
+                  `📅 ${e.summary} — ${
+                    e.start?.dateTime || e.start?.date || '(no date)'
+                  }`
+              )
+              .join('\n')
+          : '(no reply)');
+
+      addMessage('assistant', reply);
     } catch (err: any) {
-      console.error('❌ fetch error:', err);
-      setMessages((m) =>
-        m.map((msg) =>
-          msg.id === tempId
-            ? { ...msg, text: `⚠️ Error: ${err?.message || String(err)}` }
-            : msg
-        )
+      addMessage(
+        'assistant',
+        `⚠️ ${err?.message || 'Something went wrong'}`
       );
     } finally {
       setIsThinking(false);
     }
   };
 
-  return {
-    messages,
-    setMessages,
-    input,
-    setInput,
-    addMessage,
-    onSend,
-    isThinking,
-  };
+  return { messages, setMessages, input, setInput, addMessage, onSend, isThinking };
 }

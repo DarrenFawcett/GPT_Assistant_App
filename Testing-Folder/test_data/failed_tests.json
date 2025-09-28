@@ -1,0 +1,42 @@
+[
+  {
+    "test_num": 5,
+    "input": "Schedule annual leave from October 5th to 10th",
+    "expected": {
+      "summary": "\ud83c\udf34 Annual Leave",
+      "start": "2025-10-05T09:00:00",
+      "end": "2025-10-10T17:00:00",
+      "location": "",
+      "notes": "",
+      "color": "10"
+    },
+    "actual": {
+      "summary": "Annual leave",
+      "start": "2025-10-05T00:00:00",
+      "end": "2025-10-10T23:59:59",
+      "location": "",
+      "notes": "",
+      "color": "11"
+    }
+  },
+  {
+    "test_num": 10,
+    "input": "Book time off for Mia's birthday \u2014 full day on October 15",
+    "expected": {
+      "summary": "\ud83c\udf89 Mia's Birthday",
+      "start": "2025-10-15T09:00:00",
+      "end": "2025-10-15T17:00:00",
+      "location": "",
+      "notes": "",
+      "color": "10"
+    },
+    "actual": {
+      "summary": "Time off for Mia's birthday",
+      "start": "2025-10-15T00:00:00",
+      "end": "2025-10-15T23:59:59",
+      "location": "",
+      "notes": "",
+      "color": "11"
+    }
+  }
+]

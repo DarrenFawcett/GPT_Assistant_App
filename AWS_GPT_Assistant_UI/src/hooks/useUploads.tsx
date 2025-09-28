@@ -7,14 +7,14 @@ export type UploadItem = {
   status: 'queued' | 'uploading' | 'uploaded' | 'error';
 };
 
-export function useUploads(addMessage: (role: 'assistant' | 'user', text: string) => void) {
+export function useUploads() {
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openFilePicker = () => fileInputRef.current?.click();
 
-  const handleFiles = async (files: FileList | null) => {
+  const handleFiles = async (files: FileList | null, onUploaded?: (msg: string) => void) => {
     if (!files?.length) return;
     setIsUploading(true);
 
@@ -29,13 +29,15 @@ export function useUploads(addMessage: (role: 'assistant' | 'user', text: string
     setUploads((u) => [...items, ...u]);
     setIsUploading(false);
 
-    addMessage('assistant', `✅ (Mock) ${files.length} file(s) sent to S3 bucket`);
+    if (onUploaded) {
+      onUploaded(`✅ (Mock) ${files.length} file(s) sent to S3 bucket`);
+    }
   };
 
-  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>, onUploaded?: (msg: string) => void) => {
     e.preventDefault();
     e.stopPropagation();
-    handleFiles(e.dataTransfer.files);
+    handleFiles(e.dataTransfer.files, onUploaded);
   }, []);
 
   const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {

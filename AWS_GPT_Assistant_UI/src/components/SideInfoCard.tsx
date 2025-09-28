@@ -12,7 +12,7 @@ function SideInfoCard({ activeTab }: { activeTab: string }) {
   const textStyle = 'text-slate-300 text-sm';
   const hintStyle = 'text-slate-400 text-xs block mt-1';
 
-  if (activeTab === 'Chat') {
+  if (activeTab === 'chat') {
     return (
       <div className={cardBase}>
         <div className={titleStyle}>
@@ -29,7 +29,7 @@ function SideInfoCard({ activeTab }: { activeTab: string }) {
     );
   }
 
-  if (activeTab === 'Calendar') {
+  if (activeTab === 'calendar') {
     return (
       <div className={cardBase}>
         <div className={titleStyle}>
@@ -47,7 +47,7 @@ function SideInfoCard({ activeTab }: { activeTab: string }) {
     );
   }
 
-  if (activeTab === 'To-Do') {
+  if (activeTab === 'todo') {
     return (
       <div className={cardBase}>
         <div className={titleStyle}>
@@ -57,14 +57,17 @@ function SideInfoCard({ activeTab }: { activeTab: string }) {
         <div className={textStyle}>
           Add tasks like:
           <em className={hintStyle}>
-            “Buy milk, Schedule car service, Finish portfolio site.”
+            “Buy milk”<br />
+            “Schedule car service”<br />
+            “Finish portfolio site”
           </em>
         </div>
       </div>
     );
   }
 
-  if (activeTab === 'Notes') {
+
+  if (activeTab === 'notes') {
     return (
       <div className={cardBase}>
         <div className={titleStyle}>
@@ -82,7 +85,7 @@ function SideInfoCard({ activeTab }: { activeTab: string }) {
     );
   }
 
-  if (activeTab === 'Email') {
+  if (activeTab === 'email') {
     return (
       <div className={cardBase}>
         <div className={titleStyle}>
