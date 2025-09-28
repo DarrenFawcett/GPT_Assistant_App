@@ -1,4 +1,5 @@
-import { useState } from "react";
+// src/components/TodoPanel.tsx
+import { useRef, useState } from "react";
 import InputRow from "./InputRow";
 import { TypingDots } from "../styles/ThemeStyles";
 import { TODO_URL } from "../config/api";
@@ -11,25 +12,27 @@ interface TaskMessage {
 export default function ToDoPanel({
   isRecording,
   recognitionRef,
-  openFilePicker,
 }: {
   isRecording?: boolean;
   recognitionRef?: any;
-  openFilePicker?: () => void;
 }) {
   const [messages, setMessages] = useState<TaskMessage[]>([]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
 
+  // 👇 upload ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ✅ Debug log like other panels
+
   const addTask = async () => {
     const text = input.trim();
     if (!text) return;
 
-    // user bubble
     setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
-
     setIsThinking(true);
+
     try {
       const res = await fetch(TODO_URL, {
         method: "POST",
@@ -41,6 +44,7 @@ export default function ToDoPanel({
       });
 
       const data = await res.json();
+
       const replyText =
         data.reply ||
         (data.tasks?.length
@@ -49,12 +53,29 @@ export default function ToDoPanel({
 
       setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
     } catch (err) {
+      console.error("❌ To-Do API error:", err);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", text: "⚠️ Error talking to To-Do API" },
       ]);
     } finally {
       setIsThinking(false);
+    }
+  };
+
+  // 👇 open file picker
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  // 👇 handle file chosen
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", text: `📷 Uploaded: ${file.name}` },
+      ]);
     }
   };
 
@@ -108,6 +129,14 @@ export default function ToDoPanel({
         )}
       </div>
 
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+
       {/* Input row */}
       <InputRow
         placeholder='Add task… e.g., "Pay bills on Friday"'
@@ -118,7 +147,7 @@ export default function ToDoPanel({
         showMic={true}
         isRecording={isRecording}
         recognitionRef={recognitionRef}
-        openFilePicker={openFilePicker}
+        openFilePicker={openFilePicker} // ✅ wired
         buttonLabel="Add"
         helperText="Click a task to mark it complete."
       />

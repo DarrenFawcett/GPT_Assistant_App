@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { TypingDots } from "../styles/ThemeStyles";
 import InputRow from "./InputRow";
 import { CHAT_URL } from "../config/api";
@@ -8,28 +8,34 @@ interface ChatMessage {
   text: string;
 }
 
-interface ChatPanelProps {
-  isRecording?: boolean;
-  recognitionRef?: any;
-  openFilePicker?: () => void;
-  onSend?: (val: string) => void;
-}
-
-export default function ChatPanel({
-  isRecording,
-  recognitionRef,
-  openFilePicker,
-  onSend,
-}: ChatPanelProps) {
+export default function ChatPanel({ onSend }: { onSend?: (val: string) => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+
+  // 🎤 Mic state
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // 📁 File input ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFilePick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log("📁 File selected:", file.name);
+      // 👉 later: upload to S3
+    }
+  };
 
   const addMessage = async () => {
     const text = input.trim();
     if (!text) return;
 
-    // user bubble
     setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
 
@@ -62,7 +68,16 @@ export default function ChatPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Always-visible intro bubble */}
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+
+      {/* Intro bubble */}
       <div className="p-4">
         <div
           className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
@@ -120,7 +135,7 @@ export default function ChatPanel({
         showMic={true}
         isRecording={isRecording}
         recognitionRef={recognitionRef}
-        openFilePicker={openFilePicker}
+        openFilePicker={handleFilePick}  
         buttonLabel="Send"
         helperText="Type your message and hit send."
       />

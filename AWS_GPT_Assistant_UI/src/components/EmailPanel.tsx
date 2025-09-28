@@ -1,5 +1,5 @@
 // src/components/EmailPanel.tsx
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { TypingDots } from "../styles/ThemeStyles";
 import InputRow from "./InputRow";
 import { EMAIL_URL } from "../config/api";
@@ -13,30 +13,32 @@ interface EmailMessage {
 interface EmailPanelProps {
   isRecording?: boolean;
   recognitionRef?: any;
-  openFilePicker?: () => void;
 }
 
 export default function EmailPanel({
   isRecording,
   recognitionRef,
-  openFilePicker,
 }: EmailPanelProps) {
-  // 👇 seed with starter bubble so it never vanishes
   const [messages, setMessages] = useState<EmailMessage[]>([
     { role: "assistant", text: starterTexts.email },
   ]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
 
+  // 👇 upload ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ✅ Debug log
+
   const addEmail = async () => {
     const text = input.trim();
     if (!text) return;
 
-    // user bubble
+
     setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
-
     setIsThinking(true);
+
     try {
       const res = await fetch(EMAIL_URL, {
         method: "POST",
@@ -48,13 +50,14 @@ export default function EmailPanel({
       });
 
       const data = await res.json();
-      const replyText = data.reply || "⚠️ No reply from Email server";
 
+      const replyText = data.reply || "⚠️ No reply from Email server";
       setMessages((prev) => [
         ...prev,
         { role: "assistant", text: replyText },
       ]);
     } catch (err) {
+      console.error("❌ Email API error:", err);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", text: "⚠️ Error talking to Email API" },
@@ -64,9 +67,25 @@ export default function EmailPanel({
     }
   };
 
+  // 👇 open file picker
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  // 👇 handle file chosen
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", text: `📎 Attached: ${file.name}` },
+      ]);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
-      {/* Message list */}
+      {/* Messages */}
       <div className="flex-1 overflow-auto p-4 space-y-3">
         {messages.map((m, idx) => (
           <div
@@ -101,6 +120,14 @@ export default function EmailPanel({
         )}
       </div>
 
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+
       {/* Input row */}
       <InputRow
         placeholder='Write an email… e.g., "Send update to Sarah about AWS project"'
@@ -111,7 +138,7 @@ export default function EmailPanel({
         showMic={true}
         isRecording={isRecording}
         recognitionRef={recognitionRef}
-        openFilePicker={openFilePicker}
+        openFilePicker={openFilePicker} // ✅ wired
         buttonLabel="Send"
         helperText="Drafts/Replies appear above."
       />

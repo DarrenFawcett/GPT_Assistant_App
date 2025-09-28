@@ -123,7 +123,7 @@ export default function AssistantUI() {
             {/* Right */}
             <div className="md:col-span-2">
               <TabContent
-                activeTab={activeTab}
+                activeTab={activeTab as TabType}
                 chatProps={{
                   messages,
                   input,

@@ -11,7 +11,7 @@ type UploadItem = {
 type Props = {
   uploads: UploadItem[];
   isUploading: boolean;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   openFilePicker: () => void;
   handleFiles: (files: FileList | null) => void;
   onDrop: (e: React.DragEvent<HTMLDivElement>) => void;

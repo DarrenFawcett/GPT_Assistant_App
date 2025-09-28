@@ -1,5 +1,5 @@
 // src/components/NotesPanel.tsx
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { TypingDots } from "../styles/ThemeStyles";
 import InputRow from "./InputRow";
 import { NOTES_URL } from "../config/api";
@@ -13,28 +13,30 @@ interface NoteMessage {
 export default function NotesPanel({
   isRecording,
   recognitionRef,
-  openFilePicker,
 }: {
   isRecording?: boolean;
   recognitionRef?: any;
-  openFilePicker?: () => void;
 }) {
-  // 👇 initialize with welcome message so it always stays
   const [messages, setMessages] = useState<NoteMessage[]>([
     { role: "assistant", text: starterTexts.notes },
   ]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
 
+  // 👇 upload ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ✅ Debug log
+
   const addNote = async () => {
     const text = input.trim();
     if (!text) return;
 
-    // user bubble
+
     setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
-
     setIsThinking(true);
+
     try {
       const res = await fetch(NOTES_URL, {
         method: "POST",
@@ -43,10 +45,11 @@ export default function NotesPanel({
       });
 
       const data = await res.json();
-      const replyText = data.reply || "⚠️ No reply from Notes Lambda";
 
+      const replyText = data.reply || "⚠️ No reply from Notes Lambda";
       setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
     } catch (err) {
+      console.error("❌ Notes API error:", err);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", text: "⚠️ Error saving note" },
@@ -56,9 +59,25 @@ export default function NotesPanel({
     }
   };
 
+  // 👇 open file picker
+  const openFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
+  // 👇 handle file chosen
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", text: `📷 Uploaded: ${file.name}` },
+      ]);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
-      {/* Notes list */}
+      {/* Notes history */}
       <div className="flex-1 overflow-auto p-4 space-y-3">
         {messages.map((m, idx) => (
           <div
@@ -93,7 +112,15 @@ export default function NotesPanel({
         )}
       </div>
 
-      {/* InputRow */}
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+
+      {/* Input row */}
       <InputRow
         placeholder='Jot down a note… e.g., "Meeting takeaways"'
         value={input}
@@ -103,7 +130,7 @@ export default function NotesPanel({
         showMic={true}
         isRecording={isRecording}
         recognitionRef={recognitionRef}
-        openFilePicker={openFilePicker}
+        openFilePicker={openFilePicker} // ✅ wired
         buttonLabel="Save"
         helperText="Notes are saved above."
       />

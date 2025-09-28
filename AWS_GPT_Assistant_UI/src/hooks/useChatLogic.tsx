@@ -6,7 +6,7 @@ type Role = 'user' | 'assistant' | 'system';
 type Message = { id: string; role: Role; text: string };
 
 export function useChatLogic(apiToken?: string) {
-  // 👇 Seed with starter assistant message
+  // 👇 Starter assistant message
   const [messages, setMessages] = useState<Message[]>([
     {
       id: crypto.randomUUID(),
@@ -18,7 +18,7 @@ export function useChatLogic(apiToken?: string) {
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
 
-  // ✅ Utility to push a new message into the log
+  // ✅ Push a new message into the log
   const addMessage = (role: Role, text: string) => {
     setMessages((m) => [...m, { id: crypto.randomUUID(), role, text }]);
   };
@@ -32,9 +32,8 @@ export function useChatLogic(apiToken?: string) {
     // push user message
     addMessage('user', userText);
 
-    // clear input box immediately
+    // clear input box
     setInput('');
-
     setIsThinking(true);
 
     try {
@@ -55,7 +54,7 @@ export function useChatLogic(apiToken?: string) {
 
       const data = await res.json();
 
-      // ✅ Flexible reply selection (calendar + chat safe)
+      // ✅ Flexible reply selection (works for both chat + calendar)
       const reply =
         data.reply ||
         data.summary ||
@@ -63,7 +62,9 @@ export function useChatLogic(apiToken?: string) {
           ? `📅 Event created: ${data.htmlLink}`
           : data.event
           ? `📅 ${data.event.summary} — ${
-              data.event.start?.dateTime || data.event.start?.date || '(no date)'
+              data.event.start?.dateTime ||
+              data.event.start?.date ||
+              '(no date)'
             }`
           : data.events
           ? data.events
@@ -87,5 +88,13 @@ export function useChatLogic(apiToken?: string) {
     }
   };
 
-  return { messages, setMessages, input, setInput, addMessage, onSend, isThinking };
+  return {
+    messages,
+    setMessages,
+    input,
+    setInput,
+    addMessage,
+    onSend,
+    isThinking,
+  };
 }
