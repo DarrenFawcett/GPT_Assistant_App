@@ -31,14 +31,14 @@ export default function InputRow({
 }: InputRowProps) {
 
   return (
-    <div className="p-3 border-t border-slate-700/50">
+    <div className="p-3 border-t border-slate-700/50 mt-12 md:mt-0">
       <div className="flex items-center gap-2">
         {/* Upload button */}
         {showUpload && (
           <button
-            className="hidden md:inline-flex ai-icon-btn px-3 py-2"
+            className="inline-flex ai-icon-btn px-3 py-2"
             title="Upload attachment"
-            onClick={openFilePicker} 
+            onClick={openFilePicker}
           >
             <ImageIcon className="w-4 h-4" />
           </button>
@@ -47,22 +47,19 @@ export default function InputRow({
         {/* Mic button */}
         {showMic && (
           <button
-            className={`hidden md:inline-flex ai-icon-btn px-3 py-2 ${isRecording ? "bg-red-500" : ""}`}
+            className={`inline-flex ai-icon-btn px-3 py-2 ${isRecording ? "bg-red-500" : ""}`}
             title={isRecording ? "Stop recording" : "Start recording"}
             onClick={() => {
-
               if (isRecording) {
                 recognitionRef?.current?.stop?.();
               } else {
                 recognitionRef?.current?.start?.();
               }
             }}
-
           >
             <Mic className="w-4 h-4" />
           </button>
         )}
-
 
         {/* Input field */}
         <input

@@ -24,7 +24,6 @@ export default function CalendarPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ✅ Debug log props (like ChatPanel)
-  console.log("📅 CalendarPanel props:", { isRecording, recognitionRef });
 
   const formatDate = (iso: string) => {
     try {
@@ -46,7 +45,6 @@ export default function CalendarPanel({
     const text = input.trim();
     if (!text) return;
 
-    console.log("📨 Sending Calendar query:", text);
 
     setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
@@ -62,12 +60,16 @@ export default function CalendarPanel({
         }),
       });
 
-      const data = await res.json();
-      console.log("✅ Calendar API response:", data);
-
+    const data = await res.json();
       let replyText: string;
 
-      if (data.reply) {
+      if (data.calendar_added) {
+        // Normalize in case it's array or single object
+        const card = Array.isArray(data.calendar_added)
+          ? data.calendar_added[0]
+          : data.calendar_added;
+        replyText = `✅ ${card.title} — ${card.subtitle}`;
+      } else if (data.reply) {
         replyText = data.reply;
       } else if (data.event) {
         const ev = data.event;
@@ -83,9 +85,12 @@ export default function CalendarPanel({
               )}`
           )
           .join("\n");
+      } else if (data.error) {
+        replyText = `⚠️ ${data.error}`;
       } else {
         replyText = "🤔 I couldn’t find any events that match.";
       }
+
 
       setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
     } catch (err) {
@@ -107,7 +112,6 @@ export default function CalendarPanel({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      console.log("📂 File selected:", file.name);
       setMessages((prev) => [
         ...prev,
         { role: "user", text: `📷 Uploaded: ${file.name}` },

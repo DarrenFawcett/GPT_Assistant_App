@@ -14,7 +14,7 @@ export default function ChatPanel({ onSend }: { onSend?: (val: string) => void }
   const [isThinking, setIsThinking] = useState(false);
 
   // 🎤 Mic state
-  const [isRecording, setIsRecording] = useState(false);
+  const [isRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
 
   // 📁 File input ref
@@ -53,9 +53,31 @@ export default function ChatPanel({ onSend }: { onSend?: (val: string) => void }
       });
 
       const data = await res.json();
-      const replyText = data.reply || "⚠️ No reply from server";
 
-      setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
+      // ✅ Handle calendar add response
+      if (data.calendar_added) {
+        const card = Array.isArray(data.calendar_added)
+          ? data.calendar_added[0]
+          : data.calendar_added;
+        const replyText = `✅ ${card.title} — ${card.subtitle}`;
+        setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
+      }
+      // 📅 Handle events list
+      else if (data.events) {
+        const list = data.events.map((e: any) => `• ${e.title}`).join("\n");
+        setMessages((prev) => [...prev, { role: "assistant", text: list }]);
+      }
+      // 💬 Handle plain reply
+      else if (data.reply) {
+        setMessages((prev) => [...prev, { role: "assistant", text: data.reply }]);
+      }
+      // ⚠️ Handle errors
+      else if (data.error) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", text: `⚠️ ${data.error}` },
+        ]);
+      }
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -125,7 +147,7 @@ export default function ChatPanel({ onSend }: { onSend?: (val: string) => void }
         )}
       </div>
 
-      {/* Input row */}
+            {/* Input row */}
       <InputRow
         placeholder='Ask anything… e.g., "Add dentist 9 Dec 3pm"'
         value={input}
@@ -135,10 +157,11 @@ export default function ChatPanel({ onSend }: { onSend?: (val: string) => void }
         showMic={true}
         isRecording={isRecording}
         recognitionRef={recognitionRef}
-        openFilePicker={handleFilePick}  
+        openFilePicker={handleFilePick}
         buttonLabel="Send"
         helperText="Type your message and hit send."
       />
     </div>
   );
 }
+

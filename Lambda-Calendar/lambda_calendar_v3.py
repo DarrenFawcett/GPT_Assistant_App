@@ -74,8 +74,6 @@ system_prompt = (
 )
 
 
-
-
 # === Response helper ===
 def _resp(body_obj: dict, status: int = 200):
     return {
@@ -354,12 +352,13 @@ def read_window_params(evt, *, fwd_default: int, back_default: int = 0):
 def slim(e):
     return {
       "id": e.get("id"),
-      "title": e.get("summary"),
+      "summary": e.get("summary"),   # ✅ keep API’s native field name
       "start": e.get("start"),
       "end": e.get("end"),
       "link": e.get("htmlLink"),
       "colorId": e.get("colorId"),
     }
+
 
 # =========================================
 # ==============  Functions  ==============
@@ -438,24 +437,38 @@ def _normalize_parsed(parsed: dict) -> dict:
 
 
 def extract_calendar_from_messages(event: dict) -> dict:
-    # heuristic nudge in case GPT didn't set the action
-    if not event.get("action"):
-        user_text = " ".join(
-            m.get("content","") for m in event.get("messages", []) if m.get("role") == "user"
-        ).lower()
-        if any(k in user_text for k in ("add up", "total", "sum", "how much", "how many")) and \
-        any(t in user_text for t in ("annual leave", "holidays", "holiday", "vacation")):
-            event["action"] = "sum_annual_leave"
+    # --- decide fast paths, but DO NOT return early ---
+    force_add = False
+    fast_action = None
+    fast_terms: list[str] | None = None
+    fast_year: int | None = None
 
+    if event.get("messages"):
+        latest_msg = event["messages"][-1].get("content", "").lower()
 
-    """
-    If 'messages' are present, call GPT to extract a structured calendar command.
-    Merges the result back into event and returns the updated event.
-    """
-    # If there are no chat-style messages, nothing to extract.
+        # a) Explicit ADD words → force add later
+        if any(latest_msg.startswith(w) or f" {w} " in latest_msg
+               for w in ["add", "schedule", "book", "remind", "+"]):
+            force_add = True
+
+        # b) Annual leave routing (search vs sum)
+        leave_terms = ("annual leave", "holiday", "holidays", "vacation", "leave")
+        if any(t in latest_msg for t in leave_terms):
+            # "sum up" / "add up" / "how many" etc. → SUM
+            if any(k in latest_msg for k in ["sum up", "add up", "how many", "how much", "total", "count"]):
+                m = YEAR_RE.search(latest_msg)
+                if m:
+                    fast_year = int(m.group(1))
+                fast_action = "sum_annual_leave"
+            # "next", "upcoming", "when ..." → FIND NEXT
+            elif "next" in latest_msg or "upcoming" in latest_msg or latest_msg.startswith("when"):
+                fast_action = "find_next"
+                fast_terms = list(leave_terms)
+
     if not event.get("messages"):
         return event
 
+    # --- run GPT to extract events/terms (even if we have a fast path) ---
     try:
         messages = [{"role": "system", "content": system_prompt}] + event["messages"]
         resp = client.chat.completions.create(
@@ -469,19 +482,35 @@ def extract_calendar_from_messages(event: dict) -> dict:
         parsed = scrub_nones(parsed)
         print("🤖 GPT parsed:", parsed)
 
+        # Merge but preserve our fast decisions
+        gpt_action = parsed.get("action") if isinstance(parsed, dict) else None
         if isinstance(parsed, dict):
             event.update(parsed)
 
-        # If GPT returned events but forgot 'action', assume an add.
+        if fast_action:
+            event["action"] = fast_action
+            if fast_terms is not None:
+                event["terms"] = fast_terms
+            if fast_year is not None:
+                event["year"] = fast_year
+        elif gpt_action:
+            event["action"] = gpt_action
+
+        # If GPT returned events but forgot action → add
         if not event.get("action") and event.get("events"):
+            event["action"] = "add"
+
+        # If user explicitly said "add", override action to add
+        if force_add:
             event["action"] = "add"
 
         return event
 
     except Exception as e:
         print("❌ GPT extraction error:", e)
-        # Bubble up a controlled error for the handler to return 400
         raise ValueError(f"Failed to extract events from message: {e}")
+
+
 
 
 def _fetch_events_between(iso_min: str, iso_max: str, max_results: int = 3000):
@@ -774,15 +803,43 @@ def lambda_handler(event, context=None):
 
         elif action == "find_next":
             search_terms = event.get("terms", []) or [event.get("term", "")]
-            days_forward, days_back = read_window_params(event, fwd_default=30, back_default=0)
+            days_forward, days_back = read_window_params(event, fwd_default=365, back_default=0)
 
-            if not any(str(t).strip() for t in search_terms):
-                events = _fetch_events_window(days_back, days_forward)
-                next_event = events[0] if events else None
-                return _resp({"event": slim(next_event)} if next_event else {"event": None})
+            # Special case: annual leave
+            if any(t in search_terms for t in LEAVE_TERMS):
+                tz_now = datetime.now(ZoneInfo(DEFAULT_TZ))
 
+                future = []
+                # search this year and next 2 years
+                for year_offset in range(0, 3):
+                    iso_min, iso_max = year_bounds(tz_now.year + year_offset)
+                    events = _fetch_events_between_all_cals(iso_min, iso_max)
+
+                    leave_events = [e for e in events if _is_annual_leave_event(e)]
+                    leave_events.sort(key=get_event_start)
+
+                    for e in leave_events:
+                        st = get_event_start(e)
+                        try:
+                            st_dt = datetime.fromisoformat(
+                                st.replace("Z", "+00:00")
+                            ).astimezone(ZoneInfo(DEFAULT_TZ))
+                            if st_dt >= tz_now:
+                                future.append(e)
+                        except Exception:
+                            continue
+
+                    if future:
+                        break  # stop once we find any future ones
+
+                next_leave = future[0] if future else None
+                return _resp({"event": slim(next_leave) if next_leave else None})
+
+            # Normal find_next (non-leave)
             events = find_matching_events(search_terms, days_back=days_back, days_forward=days_forward)
             return _resp({"event": events[0] if events else None})
+
+
 
         elif action == "find_year":
             search_terms = event.get("terms", []) or [event.get("term", "")]
@@ -796,7 +853,7 @@ def lambda_handler(event, context=None):
                 return _resp({"events": events})
 
         elif action == "add":
-            # Accept either "event" (single), "events" (list), or GPT-minimal events.
+            # 1) collect raw events from payload
             raw_events = []
             if event.get("event"):
                 raw_events = [event["event"]]
@@ -806,7 +863,7 @@ def lambda_handler(event, context=None):
             if not raw_events:
                 return _resp({"error": "No events provided for add."}, status=400)
 
-            # If caller sent full Google bodies (start/end dicts), keep them; else build them.
+            # 2) if caller sent full Google-like bodies, keep; else build from GPT-minimal
             if any(_is_google_event_like(e) for e in raw_events):
                 to_create = [auto_fill_event(dict(e)) for e in raw_events]
             else:
@@ -815,11 +872,57 @@ def lambda_handler(event, context=None):
             if not to_create:
                 return _resp({"error": "No valid events to add after normalization."}, status=400)
 
-            created = add_events(to_create)
+            # ✅ 2.5 sanity check
+            safe_events, rejected = [], []
+            for ev in to_create:
+                st = (ev.get("start") or {}).get("dateTime") or (ev.get("start") or {}).get("date")
+                if not st:
+                    rejected.append(ev)
+                    continue
+                try:
+                    datetime.fromisoformat(st.replace("Z", "+00:00"))
+                    safe_events.append(ev)
+                except Exception:
+                    rejected.append(ev)
 
-            if len(created) == 1:
-                return _resp(created[0])
-            return _resp({"events": created})
+            if not safe_events:
+                return _resp({
+                    "error": "Could not parse a valid date/time from your request.",
+                    "rejected": rejected
+                }, status=200)
+
+            # 3) create in Google Calendar
+            created = add_events(safe_events)
+
+            # 4) format for UI
+            def _fmt(e):
+                st = (e.get("start", {}) or {}).get("dateTime") or (e.get("start", {}) or {}).get("date")
+                en = (e.get("end", {}) or {}).get("dateTime") or (e.get("end", {}) or {}).get("date")
+                if not st:
+                    return ""
+                try:
+                    s = datetime.fromisoformat(st.replace("Z", "+00:00")).astimezone(ZoneInfo(DEFAULT_TZ))
+                    txt = s.strftime("%a %d %b, %H:%M")
+                    if en:
+                        e2 = datetime.fromisoformat(en.replace("Z", "+00:00")).astimezone(ZoneInfo(DEFAULT_TZ))
+                        txt += f"–{e2.strftime('%H:%M')}"
+                    return txt
+                except Exception:
+                    return st or ""
+
+            cards = [
+                {
+                    "title": e.get("summary", "Untitled event"),
+                    "subtitle": _fmt(e),
+                    "link": e.get("htmlLink", "")
+                }
+                for e in created
+            ]
+
+            return _resp({
+                "calendar_added": cards if len(cards) > 1 else cards[0],
+                "rejected": rejected
+            })
 
         elif action == "get":
             days_forward, days_back = read_window_params(event, fwd_default=31, back_default=0)
@@ -886,8 +989,8 @@ def lambda_handler(event, context=None):
 
                     dates_str = _compress_day_list(day_ints) if day_ints else ""
                     lines.append(
-                        f"• {month_name_str} — {_plural_days(days_val)}"
-                        + (f" ({dates_str})" if dates_str else "")
+                        f"• {month_name_str}: {_plural_days(days_val)}"
+                        + (f" → {dates_str}" if dates_str else "")
                     )
 
                 reply_text = "\n".join(lines)

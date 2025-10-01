@@ -1,10 +1,93 @@
-import AssistantUI from "./gpt-assistant-ui";
-
-console.log("ALL ENVS =", import.meta.env);
+// src/App.tsx
+import { useState } from "react";
+import gptIconWhite from "./assets/gpt-icon-white.png";
+import TopTabs from "./components/TopTabs";
+import TabContent from "./components/TabContent";
+import SideInfoCard from "./components/SideInfoCard";
+import UploadPanel from "./components/UploadPanel";
+import { ThemeStyles, GlowStyles } from "./styles/ThemeStyles";
+import BottomGlow from "./styles/BottomGlow";
+import { motion } from "framer-motion";
 
 export default function App() {
-  console.log('VITE_API_BASE =', import.meta.env.VITE_API_BASE);
-  return <AssistantUI />;
-}
+  const [activeTab, setActiveTab] = useState<"chat" | "calendar" | "todo" | "notes" | "email">("chat");
 
-console.log("TEST_KEY =", import.meta.env.VITE_TEST_KEY);
+  return (
+    <div className="theme-ai-dark">
+      {/* Inject global theme + glow styles */}
+      <ThemeStyles />
+      <GlowStyles />
+
+      <div
+        className="relative min-h-screen w-full p-4 md:p-8"
+        style={{ background: "var(--app)", color: "var(--ink)" }}
+      >
+        {/* Background bottom glow */}
+        <BottomGlow />
+
+        <div className="mx-auto max-w-5xl relative">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-4">
+
+
+            <motion.div
+              className="w-16 h-16 rounded-full flex items-center justify-center ring-2 ai-icon-glow overflow-hidden"
+              style={{
+                background: "var(--surface-2)",
+                boxShadow: `
+                  0 0 2px rgba(255, 255, 255, 0.25),
+                  0 0 10px rgba(167, 139, 250, 0.35),
+                  0 0 30px rgba(139, 92, 246, 0.25)
+                `,
+                borderColor: "var(--edge)",
+              }}
+            >
+              <img
+                src={gptIconWhite}
+                alt="GPT Assistant Icon"
+                className="w-16 h-16 mt-1 object-cover"
+              />
+            </motion.div>
+
+
+
+
+            <div>
+              <div className="text-xl font-semibold">kAI – Your AI Assistant</div>
+              <div className="text-sm" style={{ color: "var(--muted)" }}>
+                Chat smarter • Stay organized • Get things done
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="w-full px-4 mb-6">
+            <TopTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+          </div>
+
+          {/* Grid Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Left column */}
+            <div className="md:col-span-1 space-y-4">
+              <SideInfoCard activeTab={activeTab} />
+              <UploadPanel
+                uploads={[]}          
+                isUploading={false}  
+                handleFiles={() => {}}
+                // fileInputRef={undefined}  // ✅ instead of null  future feature
+                // openFilePicker={() => {}}
+                // onDrop={() => {}}
+                // onDragOver={() => {}}
+              />
+            </div>
+
+            {/* Right column */}
+            <div className="md:col-span-2">
+              <TabContent activeTab={activeTab} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
