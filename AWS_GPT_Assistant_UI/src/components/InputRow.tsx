@@ -31,7 +31,7 @@ export default function InputRow({
 }: InputRowProps) {
 
   return (
-    <div className="p-3 border-t border-slate-700/50 mt-12 md:mt-0">
+    <div className="p-1 border-t pt-2 border-slate-700/50  md:mt-12">
       <div className="flex items-center gap-2">
         {/* Upload button */}
         {showUpload && (

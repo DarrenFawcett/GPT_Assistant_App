@@ -66,26 +66,8 @@ export default function App() {
           </div>
 
           {/* Grid Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Left column */}
-            <div className="md:col-span-1 space-y-4">
-              <SideInfoCard activeTab={activeTab} />
-              <UploadPanel
-                uploads={[]}          
-                isUploading={false}  
-                handleFiles={() => {}}
-                // fileInputRef={undefined}  // ✅ instead of null  future feature
-                // openFilePicker={() => {}}
-                // onDrop={() => {}}
-                // onDragOver={() => {}}
-              />
-            </div>
+          <TabContent activeTab={activeTab} />
 
-            {/* Right column */}
-            <div className="md:col-span-2">
-              <TabContent activeTab={activeTab} />
-            </div>
-          </div>
         </div>
       </div>
     </div>

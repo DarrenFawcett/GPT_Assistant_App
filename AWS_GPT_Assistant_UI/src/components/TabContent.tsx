@@ -11,37 +11,37 @@ export default function TabContent({ activeTab }: { activeTab: TabType }) {
   switch (activeTab) {
     case "chat":
       return (
-        <div className="ai-glow-card rounded-xl overflow-hidden h-full">
+        <div className=" rounded-xl overflow-hidden h-full p-4">
           <ChatPanel />
         </div>
       );
     case "calendar":
       return (
-        <div className="ai-glow-card rounded-xl overflow-hidden h-full">
+        <div className=" rounded-xl overflow-hidden h-full p-4">
           <CalendarPanel />
         </div>
       );
     case "todo":
       return (
-        <div className="ai-glow-card rounded-xl overflow-hidden h-full">
+        <div className="rounded-xl overflow-hidden h-full p-4">
           <TodoPanel />
         </div>
       );
     case "notes":
       return (
-        <div className="ai-glow-card rounded-xl overflow-hidden h-full">
+        <div className=" rounded-xl overflow-hidden h-full p-4">
           <NotesPanel />
         </div>
       );
     case "email":
       return (
-        <div className="ai-glow-card rounded-xl overflow-hidden h-full">
+        <div className=" rounded-xl overflow-hidden h-full p-4">
           <EmailPanel />
         </div>
       );
     default:
       return (
-        <div className="ai-glow-card rounded-xl overflow-hidden h-full">
+        <div className=" rounded-xl overflow-hidden h-full p-4">
           {/* fallback if needed */}
         </div>
       );
