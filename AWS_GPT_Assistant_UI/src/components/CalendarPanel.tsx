@@ -58,7 +58,12 @@ export default function CalendarPanel({
   isRecording?: boolean;
   recognitionRef?: any;
 }) {
-  const [messages, setMessages] = useState<CalendarMessage[]>([]);
+  const [messages, setMessages] = useState<CalendarMessage[]>([
+  {
+      role: "assistant",
+      text: "👋 Hi! I can help you manage your calendar — try something like 'Add dentist on Monday 3pm' or 'What’s on next week?'",
+    },
+  ]);
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);

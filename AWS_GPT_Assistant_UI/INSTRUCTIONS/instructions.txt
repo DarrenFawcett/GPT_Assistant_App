@@ -24,3 +24,12 @@ curl -X POST "https://mwhut1gvcf.execute-api.eu-west-2.amazonaws.com/prod/calend
       { "role": "user", "content": "When is my next dentist appointment?" }
     ]
   }'
+
+
+
+
+  --------------------------------
+
+
+
+  

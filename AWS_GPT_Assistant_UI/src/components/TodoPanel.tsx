@@ -57,7 +57,13 @@ export default function ToDoPanel({
   isRecording?: boolean;
   recognitionRef?: any;
 }) {
-  const [messages, setMessages] = useState<TaskMessage[]>([]);
+  const [messages, setMessages] = useState<TodoMessage[]>([
+  {
+    role: "assistant",
+    text: "👋 Ready to plan your day? Add a new task like 'Buy milk today' or ask 'What’s left to do this week?'.",
+  },
+]);
+
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
 
