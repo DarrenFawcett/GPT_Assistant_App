@@ -1,5 +1,5 @@
 // src/components/CalendarPanel.tsx
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { TypingDots } from "../styles/ThemeStyles";
 import InputRow from "./InputRow";
 import { CALENDAR_URL } from "../config/api";
@@ -59,7 +59,7 @@ export default function CalendarPanel({
   recognitionRef?: any;
 }) {
   const [messages, setMessages] = useState<CalendarMessage[]>([
-  {
+    {
       role: "assistant",
       text: "👋 Hi! I can help you manage your calendar — try something like 'Add dentist on Monday 3pm' or 'What’s on next week?'",
     },
@@ -67,9 +67,39 @@ export default function CalendarPanel({
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeAction, setActiveAction] = useState<"add" | "find" | "sum" | null>("add"); 
+  const [activeAction, setActiveAction] = useState<"add" | "find" | "sum" | null>("add");
+
+  // ✅ Scroll ref & effect (keep this ONCE only)
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const container = bottomRef.current?.parentElement;
+    if (!container) return;
+
+    // Only scroll if you're already near the bottom
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+
+    if (isNearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+
+  // ✅ Chip rotator
+  const chips = [
+    "Holiday 24 Dec - 1 Jan",
+    "Meet John tomorrow 10am",
+    "Dentist Mon 9 Dec 3pm",
+  ];
+  const [activeChip, setActiveChip] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveChip((prev) => (prev + 1) % chips.length);
+    }, 10000); // 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
 
   const formatDate = (iso: string) => {
     try {
@@ -159,6 +189,7 @@ export default function CalendarPanel({
     }
   };
 
+
   return (
     <div className="px-2 py-4 h-full">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -167,36 +198,28 @@ export default function CalendarPanel({
         <div className="flex flex-col gap-2 justify-between">
 
           {/* Calendar Help */}
-          <div className="ai-glow-card rounded-2xl p-4"
+          <div className="ai-glow-card rounded-2xl p-4 "
             style={{ background: "var(--surface-2)", color: "var(--ink)" }}>
-            
             {/* Header with icon + title + subtitle */}
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sky-400 text-lg">📅</span>
+            <div className="flex items-center gap-2 mb-2 ">
               <h3 className="font-semibold">
-                Calendar Help <span className="font-normal opacity-80 text-sm">· Add / Edit / Delete</span>
+                Calendar Help: <span className="font-normal opacity-80 text-sm px-6"> Add · Find · Sum</span>
               </h3>
-            </div>
-
-            {/* Example chips */}
-            <div className="flex flex-wrap gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs italic">
-                Holiday 24 Dec - 1 Jan
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs italic">
-                Meet John tomorrow 10am
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs italic">
-                Dentist Mon 9 Dec 3pm
+            {/* Rotating chip display */}
+            <div className="chip-rotator">
+              <span key={activeChip} className="chip-item">
+                {chips[activeChip]}
               </span>
             </div>
           </div>
+
+        </div>
 
         {/* Action buttons */}
         <div className="flex gap-8">
           <button
             onClick={() => setActiveAction("add")}
-            className={`ml-4 flex-1 text-center px-1  rounded-full py-1 flex items-center justify-center gap-1 transition
+            className={`ml-4 flex-1 text-center px-1  rounded-full flex items-center justify-center gap-1 transition
               ${activeAction === "add"
                 ? "border-2 border-sky-400 text-sky-300"
                 : "border border-transparent text-gray-300 hover:border-sky-400 hover:text-sky-300"
@@ -207,7 +230,7 @@ export default function CalendarPanel({
 
           <button
             onClick={() => setActiveAction("find")}
-            className={`flex-1 text-center px-1 rounded-full py-1 flex items-center justify-center gap-1 transition
+            className={`flex-1 text-center px-1 rounded-full flex items-center justify-center gap-1 transition
               ${activeAction === "find"
                 ? "border-2 border-sky-400 text-sky-300"
                 : "border border-transparent text-gray-300 hover:border-sky-400 hover:text-sky-300"
@@ -218,7 +241,7 @@ export default function CalendarPanel({
 
           <button
             onClick={() => setActiveAction("sum")}
-            className={`mr-4 flex-1 text-center px-1 rounded-full py-1 flex items-center justify-center gap-1 transition
+            className={`mr-4 flex-1 text-center px-1 rounded-full flex items-center justify-center gap-1 transition
               ${activeAction === "sum"
                 ? "border-2 border-sky-400 text-sky-300"
                 : "border border-transparent text-gray-300 hover:border-sky-400 hover:text-sky-300"
@@ -231,28 +254,40 @@ export default function CalendarPanel({
 
 
           {/* Chat box */}
-          <div className="ai-glow-card rounded-2xl p-2 flex flex-col flex-1 min-h-[282px]"
-            style={{ background: "var(--surface-2)", color: "var(--ink)" }}>
-            
+          <div
+            className="ai-glow-card rounded-2xl p-2 flex flex-col"
+            style={{
+              background: "var(--surface-2)",
+              color: "var(--ink)",
+              height: "345px", // fixed, not flex
+            }}
+          >
             {/* Scrollable history */}
-            <div className="flex-1 overflow-auto space-y-3 min-h-0">
+            <div
+              className="flex-1 overflow-y-auto space-y-3 custom-scrollbar"
+              style={{ scrollBehavior: "smooth" }}
+            >
               {messages.map((m, idx) => (
-                <div key={idx}
+                <div
+                  key={idx}
                   className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
                   style={{
-                    background: m.role === "assistant" ? "var(--chat-assistant)" : "var(--chat-user)",
-                    color: m.role === "assistant" ? "var(--chat-assistant-ink)" : "var(--chat-user-ink)",
+                    background:
+                      m.role === "assistant"
+                        ? "var(--chat-assistant)"
+                        : "var(--chat-user)",
+                    color:
+                      m.role === "assistant"
+                        ? "var(--chat-assistant-ink)"
+                        : "var(--chat-user-ink)",
                     marginLeft: m.role === "assistant" ? undefined : "auto",
-                  }}>
+                  }}
+                >
                   {m.text}
                 </div>
               ))}
-              {isThinking && (
-                <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
-                  style={{ background: "var(--chat-assistant)", color: "var(--chat-assistant-ink)" }}>
-                  <TypingDots />
-                </div>
-              )}
+
+              <div ref={bottomRef} />
             </div>
 
             <InputRow
@@ -268,15 +303,65 @@ export default function CalendarPanel({
               buttonLabel="Add"
             />
           </div>
+
         </div>
 
         {/* RIGHT COLUMN (Event List) */}
-        <div className="ai-glow-card rounded-2xl p-2 flex flex-col flex-1 min-h-[425px]">
-          <div className="flex pt-1 justify-center items-center">
-            <h2 className="text-lg font-semibold pb-2">Upcoming Events</h2>
-          </div>
+      <div
+        className="ai-glow-card rounded-2xl p-2 flex flex-col"
+        style={{
+          background: "var(--surface-2)",
+          color: "var(--ink)",
+          height: "100%",                // full height of parent grid row
+          minHeight: "420px",            // ensures visual balance
+          maxHeight: "calc(100vh - 270px)", // keeps responsive height
+          overflow: "hidden",            // outer container hidden
+        }}
+      >
+        {/* Header */}
+        <div className="flex justify-center items-center pb-2">
+          <h2 className="text-lg font-semibold">Upcoming Events</h2>
+        </div>
 
-          {/* Example Events */}
+        {/* Scrollable event list */}
+        <div
+          className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar"
+          style={{
+            maxHeight: "100%",
+          }}
+        >
+          <EventCard
+            title="🦷 Dentist Appointment"
+            time="Mon 9 Dec, 3:00–3:30pm"
+            status="Confirmed"
+            isSelected={selectedEvent === "🦷 Dentist Appointment"}
+            onSelect={setSelectedEvent}
+          />
+
+          <EventCard
+            title="📞 Call with John"
+            time="Tue 10 Dec, 11:00am"
+            status="Tentative"
+            isSelected={selectedEvent === "📞 Call with John"}
+            onSelect={setSelectedEvent}
+          />
+
+          <EventCard
+            title="🦷 Dentist Appointment"
+            time="Mon 9 Dec, 3:00–3:30pm"
+            status="Confirmed"
+            isSelected={selectedEvent === "🦷 Dentist Appointment"}
+            onSelect={setSelectedEvent}
+          />
+
+          <EventCard
+            title="📞 Call with John"
+            time="Tue 10 Dec, 11:00am"
+            status="Tentative"
+            isSelected={selectedEvent === "📞 Call with John"}
+            onSelect={setSelectedEvent}
+          />
+
           <EventCard
             title="🦷 Dentist Appointment"
             time="Mon 9 Dec, 3:00–3:30pm"
@@ -293,6 +378,9 @@ export default function CalendarPanel({
             onSelect={setSelectedEvent}
           />
         </div>
+      </div>
+
+
       </div>
     </div>
   );

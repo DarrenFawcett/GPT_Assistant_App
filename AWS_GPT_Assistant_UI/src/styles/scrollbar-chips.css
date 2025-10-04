@@ -1,0 +1,76 @@
+/* ============================================ */
+/* ====💠 Neon Blue Scrollbar for kAI UI ===== */
+/* ============================================ */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 12px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(8, 20, 40, 0.4);
+  border-radius: 12px;
+  margin-block: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
+  border-radius: 12px;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.9),
+              0 0 24px rgba(14, 165, 233, 0.6);
+  border: 2px solid rgba(15, 23, 42, 0.9);
+  transition: all 0.25s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #67e8f9 0%, #38bdf8 100%);
+  box-shadow: 0 0 16px rgba(103, 232, 249, 1),
+              0 0 28px rgba(56, 189, 248, 0.9);
+}
+
+/* Firefox support */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #38bdf8 rgba(8, 20, 40, 0.4);
+}
+
+
+/* ============================================ */
+/* Smooth horizontal scroll for event chips */
+/* ============================================ */
+.chip-rotator {
+  display: flex;
+  align-items: center;
+  height: 2rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.chip-item {
+  display: inline-block;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-style: italic;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+
+.chip-item.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes fadeChip {
+  0% { opacity: 0; transform: translateY(8px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+
+.chip-item {
+  animation: fadeChip 10s ease-in-out infinite;
+}

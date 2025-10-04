@@ -8,6 +8,8 @@ import UploadPanel from "./components/UploadPanel";
 import { ThemeStyles, GlowStyles } from "./styles/ThemeStyles";
 import BottomGlow from "./styles/BottomGlow";
 import { motion } from "framer-motion";
+import './index.css' 
+import './styles/scrollbar-chips.css';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"chat" | "calendar" | "todo" | "notes" | "email">("chat");
