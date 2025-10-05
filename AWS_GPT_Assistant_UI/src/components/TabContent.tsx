@@ -67,7 +67,7 @@ export default function TabContent({ activeTab }: { activeTab: TabType }) {
           initial={currentVariant.initial}
           animate={currentVariant.animate}
           exit={currentVariant.exit}
-          transition={currentVariant.transition}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
           className="h-full"
         >
           {panels[activeTab]}

@@ -1,4 +1,5 @@
-import React, { ReactNode, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+
 
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false);
@@ -31,7 +32,7 @@ export function EventCard({
   onSelect,
   isSelected,
 }: {
-  title: string;
+  title?: string;
   time: string;
   status: string;
   onSelect?: (eventTitle: string) => void;
@@ -50,7 +51,7 @@ export function EventCard({
       </div>
 
       <button
-        onClick={() => onSelect?.(title)}
+        onClick={() => title && onSelect?.(title)}
         className={`w-5 h-5 rounded-full flex items-center justify-center transition
           ${
             isSelected
@@ -66,16 +67,17 @@ export function EventCard({
 // ✅ Panel Template Wrapper
 // ---------------------------
 interface PanelTemplateProps {
-  title: string;
+  title?: string;   // 👈 optional now
   subtitle?: string;
-  children: ReactNode;
-  rightColumn?: ReactNode;
-  actions?: ReactNode;
-  topExtra?: ReactNode;
+  children: React.ReactNode;
+  rightColumn?: React.ReactNode;
+  actions?: React.ReactNode;
+  topExtra?: React.ReactNode;
 }
 
+
 export default function PanelTemplate({
-  title,
+  title = "",
   subtitle,
   children,
   rightColumn,

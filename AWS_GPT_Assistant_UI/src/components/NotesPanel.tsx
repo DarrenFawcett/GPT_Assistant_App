@@ -195,7 +195,7 @@ export default function NotesPanel({
             ? 'Add note… e.g., "Start blog draft about AI agents"'
             : activeAction === "edit"
             ? 'Edit note… e.g., "Update grocery list"'
-            : activeAction === "complete"
+            : activeAction === "delete"
             ? 'Complete note… e.g., "Mark project as done"'
             : 'Delete note… e.g., "Remove meeting notes"'
         }

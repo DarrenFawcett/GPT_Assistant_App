@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 interface PanelFrameProps {
   left: ReactNode;   // left side cards

@@ -3,16 +3,16 @@ import { useState } from "react";
 import gptIconWhite from "./assets/gpt-icon-white.png";
 import TopTabs from "./components/TopTabs";
 import TabContent from "./components/TabContent";
-import SideInfoCard from "./components/SideInfoCard";
-import UploadPanel from "./components/UploadPanel";
 import { ThemeStyles, GlowStyles } from "./styles/ThemeStyles";
 import BottomGlow from "./styles/BottomGlow";
 import { motion } from "framer-motion";
-import './index.css' 
-import './styles/scrollbar-chips.css';
+import "./index.css";
+import "./styles/scrollbar-chips.css";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<"chat" | "calendar" | "todo" | "notes" | "email">("chat");
+  const [activeTab, setActiveTab] = useState<
+    "chat" | "calendar" | "todo" | "notes" | "email"
+  >("chat");
 
   return (
     <div className="theme-ai-dark">
@@ -24,15 +24,12 @@ export default function App() {
         className="relative min-h-screen w-full px-3 py-3 sm:px-4 sm:py-0 md:p-8"
         style={{ background: "var(--app)", color: "var(--ink)" }}
       >
-
         {/* Background bottom glow */}
         <BottomGlow />
 
         <div className="mx-auto max-w-5xl relative">
           {/* Header */}
           <div className="flex items-center gap-3 mb-4">
-
-
             <motion.div
               className="w-16 h-16 rounded-full flex items-center justify-center ring-2 ai-icon-glow overflow-hidden"
               style={{
@@ -65,9 +62,8 @@ export default function App() {
             <TopTabs activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
 
-          {/* Grid Layout */}
+          {/* Tab Panels */}
           <TabContent activeTab={activeTab} />
-
         </div>
       </div>
     </div>

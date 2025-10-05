@@ -35,7 +35,7 @@ function EmailCard({
       </div>
 
       <button
-        onClick={() => onSelect?.(subject)}
+        onClick={() => subject && onSelect?.(subject)}
         className={`w-5 h-5 rounded-full flex items-center justify-center transition
           ${
             isSelected
@@ -55,13 +55,7 @@ interface EmailMessage {
   text: string;
 }
 
-export default function EmailPanel({
-  isRecording,
-  recognitionRef,
-}: {
-  isRecording?: boolean;
-  recognitionRef?: any;
-}) {
+export default function EmailPanel() {
   const [messages, setMessages] = useState<EmailMessage[]>([
     {
       role: "assistant",
@@ -83,9 +77,7 @@ export default function EmailPanel({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ---------------------------
   // 📤 Handle submit
-  // ---------------------------
   const handleSubmit = async () => {
     const text = input.trim();
     if (!text) return;
@@ -106,7 +98,7 @@ export default function EmailPanel({
       });
 
       const data = await res.json();
-      let replyText = data.reply || "✉️ Email action complete.";
+      const replyText = data.reply || "✉️ Email action complete.";
 
       setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
     } catch (err) {
@@ -120,19 +112,8 @@ export default function EmailPanel({
     }
   };
 
-  // ---------------------------
-  // 📎 File handler
-  // ---------------------------
+  // 📎 File picker
   const openFilePicker = () => fileInputRef.current?.click();
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", text: `📎 Attached: ${file.name}` },
-      ]);
-    }
-  };
 
   return (
     <PanelTemplate
@@ -248,8 +229,6 @@ export default function EmailPanel({
         onSubmit={handleSubmit}
         showUpload
         showMic
-        isRecording={isRecording}
-        recognitionRef={recognitionRef}
         openFilePicker={openFilePicker}
         buttonLabel={activeAction === "compose" ? "Send" : "Go"}
       />
