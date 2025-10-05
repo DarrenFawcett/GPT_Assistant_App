@@ -27,10 +27,11 @@ export default function TopTabs({
   return (
     <div
       className="
-        flex flex-wrap justify-center gap-2 mt-2 mb-4
-        sm:flex-nowrap sm:gap-3
+        flex flex-wrap justify-center gap-2 mt-2 mb-0
+        sm:mb-4 sm:flex-nowrap sm:gap-3
       "
     >
+
       {tabOptions.map((tab) => (
         <button
           key={tab.key}

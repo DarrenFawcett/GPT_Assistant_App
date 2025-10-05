@@ -29,7 +29,7 @@ export default function InputRow({
   helperText,
 }: InputRowProps) {
   return (
-    <div className="p-1 border-t pt-2 border-slate-700/50 md:mt-12">
+    <div className="p-1 border-t pt-2 border-slate-700/50 md:mt-1">
       {/* Mobile layout (stacked) */}
       <div className="flex flex-col gap-2 md:hidden">
         {/* Input on top */}

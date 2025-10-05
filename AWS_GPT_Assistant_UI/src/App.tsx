@@ -21,9 +21,10 @@ export default function App() {
       <GlowStyles />
 
       <div
-        className="relative min-h-screen w-full p-4 md:p-8"
+        className="relative min-h-screen w-full px-3 py-3 sm:px-4 sm:py-0 md:p-8"
         style={{ background: "var(--app)", color: "var(--ink)" }}
       >
+
         {/* Background bottom glow */}
         <BottomGlow />
 
@@ -51,9 +52,6 @@ export default function App() {
               />
             </motion.div>
 
-
-
-
             <div>
               <div className="text-xl font-semibold">kAI – Your AI Assistant</div>
               <div className="text-sm" style={{ color: "var(--muted)" }}>
@@ -63,7 +61,7 @@ export default function App() {
           </div>
 
           {/* Tabs */}
-          <div className="w-full px-4 mb-6">
+          <div className="w-full px-4">
             <TopTabs activeTab={activeTab} setActiveTab={setActiveTab} />
           </div>
 

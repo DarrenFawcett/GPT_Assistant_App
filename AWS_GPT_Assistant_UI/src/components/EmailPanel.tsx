@@ -1,8 +1,14 @@
-import { useRef, useState } from "react";
+// src/components/EmailPanel.tsx
+import { useRef, useState, useEffect } from "react";
 import { TypingDots } from "../styles/ThemeStyles";
 import InputRow from "./InputRow";
-import { EMAIL_URL } from "../config/api"; // You can later hook this to your email lambda
+import { EMAIL_URL } from "../config/api";
+import PanelTemplate from "./PanelTemplate";
+import ChipRotatorWithButton from "./ChipRotator";
 
+// ---------------------------
+// ✅ EmailCard (for right column preview)
+// ---------------------------
 function EmailCard({
   subject,
   sender,
@@ -18,10 +24,9 @@ function EmailCard({
 }) {
   return (
     <div
-      className="rounded-lg px-4 py-3 flex justify-between items-center mb-3"
+      className="rounded-lg px-4 py-3 flex justify-between items-center mb-3 transition"
       style={{ background: "rgba(255,255,255,0.05)" }}
     >
-      {/* Email Info */}
       <div className="pl-1">
         <div className="font-semibold">{subject}</div>
         <div className="text-xs opacity-70">
@@ -29,7 +34,6 @@ function EmailCard({
         </div>
       </div>
 
-      {/* Circle Select Button */}
       <button
         onClick={() => onSelect?.(subject)}
         className={`w-5 h-5 rounded-full flex items-center justify-center transition
@@ -38,13 +42,14 @@ function EmailCard({
               ? "bg-sky-500 border border-sky-500 text-white"
               : "border border-sky-400 text-sky-400 hover:bg-sky-500 hover:text-white"
           }`}
-      >
-        {isSelected && ""}
-      </button>
+      />
     </div>
   );
 }
 
+// ---------------------------
+// ✅ EmailPanel Component
+// ---------------------------
 interface EmailMessage {
   role: "user" | "assistant";
   text: string;
@@ -60,17 +65,28 @@ export default function EmailPanel({
   const [messages, setMessages] = useState<EmailMessage[]>([
     {
       role: "assistant",
-      text: "📧 Hi! I can help you draft, find, or organise your emails — try something like 'Write a reply to John about the meeting' or 'Show unread messages'.",
+      text: "📧 Hi! I can help you manage emails — try 'Compose email to John', 'Find unread', or 'Summarise inbox'.",
     },
   ]);
 
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeAction, setActiveAction] = useState<"compose" | "find" | "delete" | null>("compose");
+  const [activeAction, setActiveAction] = useState<
+    "compose" | "find" | "summarise" | "delete"
+  >("compose");
 
-  const addMessage = async () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // ---------------------------
+  // 📤 Handle submit
+  // ---------------------------
+  const handleSubmit = async () => {
     const text = input.trim();
     if (!text) return;
 
@@ -84,12 +100,13 @@ export default function EmailPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tab: "Email",
+          action: activeAction,
           messages: [{ role: "user", content: text }],
         }),
       });
 
       const data = await res.json();
-      let replyText = data.reply || "✉️ Message processed.";
+      let replyText = data.reply || "✉️ Email action complete.";
 
       setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
     } catch (err) {
@@ -103,6 +120,9 @@ export default function EmailPanel({
     }
   };
 
+  // ---------------------------
+  // 📎 File handler
+  // ---------------------------
   const openFilePicker = () => fileInputRef.current?.click();
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,136 +135,124 @@ export default function EmailPanel({
   };
 
   return (
-    <div className="px-2 py-4 h-full">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-
-        {/* LEFT COLUMN (Help + Chat) */}
-        <div className="flex flex-col gap-2 justify-between">
-
-          {/* Email Help */}
-          <div className="ai-glow-card rounded-2xl p-4"
-            style={{ background: "var(--surface-2)", color: "var(--ink)" }}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sky-400 text-lg">📬</span>
-              <h3 className="font-semibold">
-                Email Help <span className="font-normal opacity-80 text-sm">· Compose / Search / Delete</span>
-              </h3>
-            </div>
-
-            {/* Example chips */}
-            <div className="flex flex-wrap gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs italic">
-                Write email to John
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs italic">
-                Find unread emails
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs italic">
-                Delete draft
-              </span>
-            </div>
+    <PanelTemplate
+      topExtra={
+        <ChipRotatorWithButton
+          header="Emails:"
+          items={[
+            { icon: "🖊️", label: "Compose", text: "Send update to John" },
+            { icon: "🔍", label: "Find", text: "Search unread messages" },
+            { icon: "🧠", label: "Summarise", text: "Summarise this week’s inbox" },
+            { icon: "🗑️", label: "Delete", text: "Remove old drafts" },
+          ]}
+        />
+      }
+      actions={["compose", "find", "summarise", "delete"].map((action) => (
+        <button
+          key={action}
+          onClick={() => setActiveAction(action as any)}
+          className={`flex-1 text-center px-0 py-[0px] sm:py-[1px] rounded-full flex items-center justify-center gap-1 text-xs sm:text-sm transition
+            ${
+              activeAction === action
+                ? "border-2 border-sky-400 text-sky-300"
+                : "border border-transparent text-gray-300 hover:border-sky-400 hover:text-sky-300"
+            }`}
+        >
+          {action === "compose"
+            ? "🖊️ Compose"
+            : action === "find"
+            ? "🔍 Find"
+            : action === "summarise"
+            ? "🧠 Summarise"
+            : "🗑️ Delete"}
+        </button>
+      ))}
+      rightColumn={
+        <>
+          <div className="flex justify-center items-center pb-2">
+            <h2 className="text-lg font-semibold">Inbox Preview</h2>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-8">
-            <button
-              onClick={() => setActiveAction("compose")}
-              className={`ml-4 flex-1 text-center px-1 rounded-full py-1 flex items-center justify-center gap-1 transition
-                ${
-                  activeAction === "compose"
-                    ? "border-2 border-sky-400 text-sky-300"
-                    : "border border-transparent text-gray-300 hover:border-sky-400 hover:text-sky-300"
-                }`}
-            >
-              🖊️ Compose
-            </button>
-
-            <button
-              onClick={() => setActiveAction("find")}
-              className={`flex-1 text-center px-1 rounded-full py-1 flex items-center justify-center gap-1 transition
-                ${
-                  activeAction === "find"
-                    ? "border-2 border-sky-400 text-sky-300"
-                    : "border border-transparent text-gray-300 hover:border-sky-400 hover:text-sky-300"
-                }`}
-            >
-              🔍 Find
-            </button>
-
-            <button
-              onClick={() => setActiveAction("delete")}
-              className={`mr-4 flex-1 text-center px-1 rounded-full py-1 flex items-center justify-center gap-1 transition
-                ${
-                  activeAction === "delete"
-                    ? "border-2 border-sky-400 text-sky-300"
-                    : "border border-transparent text-gray-300 hover:border-sky-400 hover:text-sky-300"
-                }`}
-            >
-              🗑️ Delete
-            </button>
-          </div>
-
-          {/* Chat box */}
-          <div className="ai-glow-card rounded-2xl p-2 flex flex-col flex-1 min-h-[282px]"
-            style={{ background: "var(--surface-2)", color: "var(--ink)" }}>
-            <div className="flex-1 overflow-auto space-y-3 min-h-0">
-              {messages.map((m, idx) => (
-                <div key={idx}
-                  className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
-                  style={{
-                    background: m.role === "assistant" ? "var(--chat-assistant)" : "var(--chat-user)",
-                    color: m.role === "assistant" ? "var(--chat-assistant-ink)" : "var(--chat-user-ink)",
-                    marginLeft: m.role === "assistant" ? undefined : "auto",
-                  }}>
-                  {m.text}
-                </div>
-              ))}
-              {isThinking && (
-                <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
-                  style={{ background: "var(--chat-assistant)", color: "var(--chat-assistant-ink)" }}>
-                  <TypingDots />
-                </div>
-              )}
-            </div>
-
-            <InputRow
-              placeholder='Write email… e.g., "Draft message to John about project"'
-              value={input}
-              onChange={setInput}
-              onSubmit={addMessage}
-              showUpload
-              showMic
-              isRecording={isRecording}
-              recognitionRef={recognitionRef}
-              openFilePicker={() => fileInputRef.current?.click()}
-              buttonLabel="Send"
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+            <EmailCard
+              subject="Project Update"
+              sender="John Doe"
+              status="Unread"
+              isSelected={selectedEmail === "Project Update"}
+              onSelect={setSelectedEmail}
+            />
+            <EmailCard
+              subject="AWS Billing Notice"
+              sender="Amazon Web Services"
+              status="Read"
+              isSelected={selectedEmail === "AWS Billing Notice"}
+              onSelect={setSelectedEmail}
             />
           </div>
-        </div>
-
-        {/* RIGHT COLUMN (Inbox Preview) */}
-        <div className="ai-glow-card rounded-2xl p-2 flex flex-col flex-1 min-h-[425px]">
-          <div className="flex pt-1 justify-center items-center">
-            <h2 className="text-lg font-semibold pb-2">Inbox Preview</h2>
+        </>
+      }
+    >
+      {/* 💬 Chat Section */}
+      <div
+        className="flex-1 overflow-y-auto space-y-3 custom-scrollbar"
+        style={{ scrollBehavior: "smooth" }}
+      >
+        {messages.map((m, idx) => (
+          <div
+            key={idx}
+            className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
+            style={{
+              background:
+                m.role === "assistant"
+                  ? "var(--chat-assistant)"
+                  : "var(--chat-user)",
+              color:
+                m.role === "assistant"
+                  ? "var(--chat-assistant-ink)"
+                  : "var(--chat-user-ink)",
+              marginLeft: m.role === "assistant" ? undefined : "auto",
+            }}
+          >
+            {m.text}
           </div>
+        ))}
 
-          {/* Example Emails */}
-          <EmailCard
-            subject="Meeting Recap"
-            sender="John Doe"
-            status="Unread"
-            isSelected={selectedEmail === "Meeting Recap"}
-            onSelect={setSelectedEmail}
-          />
-          <EmailCard
-            subject="AWS Billing Notice"
-            sender="Amazon Web Services"
-            status="Read"
-            isSelected={selectedEmail === "AWS Billing Notice"}
-            onSelect={setSelectedEmail}
-          />
-        </div>
+        {isThinking && (
+          <div
+            className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
+            style={{
+              background: "var(--chat-assistant)",
+              color: "var(--chat-assistant-ink)",
+            }}
+          >
+            <TypingDots />
+          </div>
+        )}
+
+        <div ref={bottomRef} />
       </div>
-    </div>
+
+      {/* ✍️ Input Row */}
+      <InputRow
+        placeholder={
+          activeAction === "compose"
+            ? 'Write email… e.g., "Draft reply to John about meeting"'
+            : activeAction === "find"
+            ? 'Search emails… e.g., "Unread from last week"'
+            : activeAction === "summarise"
+            ? 'Summarise… e.g., "Summarise inbox for today"'
+            : 'Delete email… e.g., "Remove old draft"'
+        }
+        value={input}
+        onChange={setInput}
+        onSubmit={handleSubmit}
+        showUpload
+        showMic
+        isRecording={isRecording}
+        recognitionRef={recognitionRef}
+        openFilePicker={openFilePicker}
+        buttonLabel={activeAction === "compose" ? "Send" : "Go"}
+      />
+    </PanelTemplate>
   );
 }

@@ -1,50 +1,11 @@
-import { useRef, useState } from "react";
-import InputRow from "./InputRow";
+import { useRef, useState, useEffect } from "react";
 import { TypingDots } from "../styles/ThemeStyles";
-import { NotebookText } from "lucide-react";
-import { NOTES_URL } from "../config/api"; // (you can add this later)
+import InputRow from "./InputRow";
+import { NOTES_URL } from "../config/api";
+import PanelTemplate from "./PanelTemplate";
+import ChipRotatorWithButton from "./ChipRotator";
 
-function NoteCard({
-  title,
-  date,
-  snippet,
-  onSelect,
-  isSelected,
-}: {
-  title: string;
-  date: string;
-  snippet: string;
-  onSelect?: (noteTitle: string) => void;
-  isSelected?: boolean;
-}) {
-  return (
-    <div
-      className="rounded-lg px-4 py-3 flex justify-between items-center mb-3"
-      style={{ background: "rgba(255,255,255,0.05)" }}
-    >
-      {/* Note Info */}
-      <div className="pl-1 flex-1">
-        <div className="font-semibold">{title}</div>
-        <div className="text-xs opacity-70 mb-1">{date}</div>
-        <div className="text-xs opacity-70 italic truncate">{snippet}</div>
-      </div>
-
-      {/* Select Button */}
-      <button
-        onClick={() => onSelect?.(title)}
-        className={`w-5 h-5 rounded-full flex items-center justify-center transition
-          ${
-            isSelected
-              ? "bg-sky-500 border border-sky-500 text-white"
-              : "border border-sky-400 text-sky-400 hover:bg-sky-500 hover:text-white"
-          }`}
-      >
-        {isSelected && ""}
-      </button>
-    </div>
-  );
-}
-
+// ✅ Message type
 interface NoteMessage {
   role: "user" | "assistant";
   text: string;
@@ -60,19 +21,30 @@ export default function NotesPanel({
   const [messages, setMessages] = useState<NoteMessage[]>([
     {
       role: "assistant",
-      text: "📝 Hi! I’m kAI — here to help you jot down notes, summaries, or ideas. Try something like 'Create a note about today’s meeting' or 'Show my notes from this week.'",
+      text: "📝 Ready to jot down ideas? Try things like 'Add new note', 'Edit shopping list', or 'Delete old notes'.",
     },
   ]);
 
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
-  const [selectedNote, setSelectedNote] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeAction, setActiveAction] = useState<"add" | "edit" | "delete">("add");
+  const [savedNotes, setSavedNotes] = useState<string[]>([
+    "🧠 Study AWS SDK commands",
+    "🪶 Write blog draft about AI",
+    "🧾 Check grocery list",
+  ]);
 
-  const addNote = async () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // 🔹 API
+  const handleSubmit = async () => {
     const text = input.trim();
     if (!text) return;
-
     setMessages((prev) => [...prev, { role: "user", text }]);
     setInput("");
     setIsThinking(true);
@@ -83,13 +55,29 @@ export default function NotesPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tab: "Notes",
+          action: activeAction,
           messages: [{ role: "user", content: text }],
         }),
       });
 
       const data = await res.json();
-      const replyText = data.reply || "✅ Note saved successfully.";
+      let replyText = "🤔 No response.";
+
+      if (data.note_added) replyText = `✅ Added note: ${data.note_added.title || text}`;
+      else if (data.reply) replyText = data.reply;
+      else if (data.notes?.length)
+        replyText = data.notes.map((n: any) => `🗒️ ${n}`).join("\n");
+
       setMessages((prev) => [...prev, { role: "assistant", text: replyText }]);
+
+      // 🧷 Simulate note handling for UI demo
+      if (activeAction === "add") setSavedNotes((prev) => [...prev, text]);
+      else if (activeAction === "delete")
+        setSavedNotes((prev) => prev.filter((n) => !n.includes(text)));
+      else if (activeAction === "edit")
+        setSavedNotes((prev) =>
+          prev.map((n) => (n === savedNotes[0] ? text : n))
+        );
     } catch (err) {
       console.error("❌ Notes API error:", err);
       setMessages((prev) => [
@@ -101,115 +89,126 @@ export default function NotesPanel({
     }
   };
 
-  const openFilePicker = () => fileInputRef.current?.click();
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", text: `📎 Attached: ${file.name}` },
-      ]);
-    }
-  };
+  useEffect(() => setInput(""), [activeAction]);
 
   return (
-    <div className="px-2 py-4 h-full">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+    <PanelTemplate
+      topExtra={
+        <ChipRotatorWithButton
+          header="Notes:"
+          items={[
+            { icon: "➕", label: "Add", text: "Plan weekend ideas" },
+            { icon: "✏️", label: "Edit", text: "Update AWS study list" },
+            { icon: "✅", label: "Complete", text: "Mark project as done" },
+            { icon: "🗑️", label: "Delete", text: "Clear old reminders" },
+          ]}
+        />
+      }
+      actions={["add", "edit", "complete", "delete"].map((action) => (
+        <button
+          key={action}
+          onClick={() => setActiveAction(action as any)}
+          className={`flex-1 text-center px-0 py-[0px] sm:py-[1px] rounded-full flex items-center justify-center gap-1 text-xs sm:text-sm transition
+            ${
+              activeAction === action
+                ? "border-2 border-sky-400 text-sky-300"
+                : "border border-transparent text-gray-300 hover:border-sky-400 hover:text-sky-300"
+            }`}
+        >
+          {action === "add"
+            ? "➕ Add"
+            : action === "edit"
+            ? "✏️ Edit"
+            : action === "complete"
+            ? "✅ Complete"
+            : "🗑️ Delete"}
+        </button>
+      ))}
 
-        {/* LEFT COLUMN */}
-        <div className="flex flex-col gap-4 justify-between">
-          
-          {/* Notes Tips */}
-          <div className="ai-glow-card rounded-2xl p-4"
-            style={{ background: "var(--surface-2)", color: "var(--ink)" }}>
-            <div className="flex items-center gap-2 mb-2">
-              <NotebookText className="w-5 h-5 text-sky-400" />
-              <h3 className="font-semibold">
-                Notes Help <span className="font-normal opacity-80 text-sm">· Add / View / Organise</span>
-              </h3>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs italic">
-                Create note about meeting
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs italic">
-                Show my ideas list
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-sky-500/20 text-sky-300 text-xs italic">
-                Summarise project notes
-              </span>
-            </div>
+      rightColumn={
+        <>
+          <div className="flex justify-center items-center pb-2">
+            <h2 className="text-lg font-semibold">Saved Notes</h2>
           </div>
 
-          {/* Chat box */}
-          <div className="ai-glow-card rounded-2xl p-2 flex flex-col flex-1 min-h-[322px]"
-              style={{ background: "var(--surface-2)", color: "var(--ink)" }}>
-            <div className="flex-1 overflow-auto space-y-3 min-h-0">
-              {messages.map((m, idx) => (
-                <div key={idx}
-                    className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
-                    style={{
-                      background: m.role === "assistant" ? "var(--chat-assistant)" : "var(--chat-user)",
-                      color: m.role === "assistant" ? "var(--chat-assistant-ink)" : "var(--chat-user-ink)",
-                      marginLeft: m.role === "assistant" ? undefined : "auto",
-                    }}>
-                  {m.text}
-                </div>
-              ))}
-              {isThinking && (
-                <div className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
-                    style={{ background: "var(--chat-assistant)", color: "var(--chat-assistant-ink)" }}>
-                  <TypingDots />
-                </div>
-              )}
-            </div>
-
-            <InputRow
-              placeholder='Add note… e.g., "Remember to review AWS billing summary"'
-              value={input}
-              onChange={setInput}
-              onSubmit={addNote}
-              showUpload
-              showMic
-              isRecording={isRecording}
-              recognitionRef={recognitionRef}
-              openFilePicker={openFilePicker}
-              buttonLabel="Add"
-            />
+          <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+            {savedNotes.map((note, idx) => (
+              <div
+                key={idx}
+                className="rounded-md px-3 py-2 text-sm"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  color: "var(--ink)",
+                }}
+              >
+                {note}
+              </div>
+            ))}
           </div>
-        </div>
-
-        {/* RIGHT COLUMN */}
-        <div className="ai-glow-card rounded-2xl p-2 flex flex-col flex-1 min-h-[425px]">
-          <div className="flex pt-1 justify-center items-center">
-            <h2 className="text-lg font-semibold pb-2">Saved Notes</h2>
+        </>
+      }
+    >
+      {/* 💬 Chat / Notes Feed */}
+      <div
+        className="flex-1 overflow-y-auto space-y-3 custom-scrollbar"
+        style={{ scrollBehavior: "smooth" }}
+      >
+        {messages.map((m, idx) => (
+          <div
+            key={idx}
+            className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
+            style={{
+              background:
+                m.role === "assistant"
+                  ? "var(--chat-assistant)"
+                  : "var(--chat-user)",
+              color:
+                m.role === "assistant"
+                  ? "var(--chat-assistant-ink)"
+                  : "var(--chat-user-ink)",
+              marginLeft: m.role === "assistant" ? undefined : "auto",
+            }}
+          >
+            {m.text}
           </div>
+        ))}
 
-          <NoteCard
-            title="💡 Project Ideas"
-            date="Oct 4, 2025"
-            snippet="Brainstorming AI-assistant layout and linking across tabs..."
-            isSelected={selectedNote === "💡 Project Ideas"}
-            onSelect={setSelectedNote}
-          />
+        {isThinking && (
+          <div
+            className="max-w-[85%] rounded-2xl px-3 py-2 text-sm ai-bubble-glow"
+            style={{
+              background: "var(--chat-assistant)",
+              color: "var(--chat-assistant-ink)",
+            }}
+          >
+            <TypingDots />
+          </div>
+        )}
 
-          <NoteCard
-            title="🗓️ Meeting Summary"
-            date="Oct 3, 2025"
-            snippet="Discussed timeline, Lambda fixes, and UI spacing improvements..."
-            isSelected={selectedNote === "🗓️ Meeting Summary"}
-            onSelect={setSelectedNote}
-          />
-        </div>
+        <div ref={bottomRef} />
       </div>
 
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: "none" }}
-        onChange={handleFileChange}
+      {/* 🧠 Input Row */}
+      <InputRow
+        placeholder={
+          activeAction === "add"
+            ? 'Add note… e.g., "Start blog draft about AI agents"'
+            : activeAction === "edit"
+            ? 'Edit note… e.g., "Update grocery list"'
+            : activeAction === "complete"
+            ? 'Complete note… e.g., "Mark project as done"'
+            : 'Delete note… e.g., "Remove meeting notes"'
+        }
+        value={input}
+        onChange={setInput}
+        onSubmit={handleSubmit}
+        showUpload
+        showMic
+        isRecording={isRecording}
+        recognitionRef={recognitionRef}
+        openFilePicker={() => fileInputRef.current?.click()}
+        buttonLabel={activeAction === "add" ? "Add" : "Go"}
       />
-    </div>
+    </PanelTemplate>
   );
 }
