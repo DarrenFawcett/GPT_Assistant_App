@@ -22,3 +22,4 @@ export function authHeaders(apiToken?: string, userToken?: string) {
     ...(userToken ? { "X-User-Token": userToken } : {}),
   };
 }
+console.log("🌍 Loaded API:", API_BASE, "Key:", TEST_KEY);

@@ -1,29 +1,37 @@
 import React, { useState, useEffect } from "react";
 
+// ---------------------------
+// 📏 Responsive width detection
+// ---------------------------
+function useScreenSize() {
+  const [screen, setScreen] = useState<"sm" | "md" | "lg">("lg");
 
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < breakpoint);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, [breakpoint]);
-  return isMobile;
+    const handleResize = () => {
+      const w = window.innerWidth;
+      if (w < 640) setScreen("sm");
+      else if (w < 1024) setScreen("md");
+      else setScreen("lg");
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return screen;
 }
 
+// ---------------------------
+// 🎛️ Height presets (vh = viewport height)
+// ---------------------------
+const HEIGHTS = {
+  sm: { left: "36vh", right: "36vh" },   // 📱 Mobile
+  md: { left: "45vh", right: "45vh" },   // 💻 Tablet
+  lg: { left: "48vh", right: "63vh" },   // 🖥️ Desktop
+};
 
 // ---------------------------
-// 🎛️ Height Config — tweak once, use everywhere
-// ---------------------------
-const HEIGHT_LEFT_DESKTOP = "48vh";         // 🖥️ desktop left panel height
-const HEIGHT_RIGHT_DESKTOP = "63.5vh";      // 🖥️ desktop right panel height
-const HEIGHT_LEFT_MOBILE = "36vh";          // 📱 mobile left panel height
-const HEIGHT_MIN_RIGHT_MOBILE = "25vh";     // 📱 mobile min height
-const HEIGHT_MAX_RIGHT_MOBILE = "40vh";     // 📱 mobile max height
-
-// ---------------------------
-// ✅ Reusable EventCard
+// ✅ EventCard reusable component
 // ---------------------------
 export function EventCard({
   title,
@@ -52,29 +60,27 @@ export function EventCard({
 
       <button
         onClick={() => title && onSelect?.(title)}
-        className={`w-5 h-5 rounded-full flex items-center justify-center transition
-          ${
-            isSelected
-              ? "bg-sky-500 border border-sky-500 text-white"
-              : "border border-sky-400 text-sky-400 hover:bg-sky-500 hover:text-white"
-          }`}
+        className={`w-5 h-5 rounded-full flex items-center justify-center transition ${
+          isSelected
+            ? "bg-sky-500 border border-sky-500 text-white"
+            : "border border-sky-400 text-sky-400 hover:bg-sky-500 hover:text-white"
+        }`}
       />
     </div>
   );
 }
 
 // ---------------------------
-// ✅ Panel Template Wrapper
+// ✅ Panel Template
 // ---------------------------
 interface PanelTemplateProps {
-  title?: string;   // 👈 optional now
+  title?: string;
   subtitle?: string;
   children: React.ReactNode;
   rightColumn?: React.ReactNode;
   actions?: React.ReactNode;
   topExtra?: React.ReactNode;
 }
-
 
 export default function PanelTemplate({
   title = "",
@@ -84,12 +90,18 @@ export default function PanelTemplate({
   actions,
   topExtra,
 }: PanelTemplateProps) {
-  const isMobile = useIsMobile();
+  const screen = useScreenSize();
+  const h = HEIGHTS[screen];
 
   return (
-    <div className="px-2  sm:py-4 h-full">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-
+    <div className="px-2 sm:py-4 h-full">
+      <div
+        className={`grid gap-4 items-start ${
+          screen === "lg" || screen === "md"
+            ? "grid-cols-2"
+            : "grid-cols-1"
+        }`}
+      >
         {/* LEFT COLUMN */}
         <div className="flex flex-col gap-2 relative pt-2 sm:pt-0">
           {/* Header */}
@@ -110,7 +122,9 @@ export default function PanelTemplate({
             {topExtra}
           </div>
 
-          {actions && <div className="flex gap-4 px-4 justify-center">{actions}</div>}
+          {actions && (
+            <div className="flex gap-4 px-4 justify-center">{actions}</div>
+          )}
 
           {/* Main Panel */}
           <div
@@ -118,12 +132,14 @@ export default function PanelTemplate({
             style={{
               background: "var(--surface-2)",
               color: "var(--ink)",
-              minHeight: "300px",
-              height: isMobile ? HEIGHT_LEFT_MOBILE : HEIGHT_LEFT_DESKTOP,
-              padding: isMobile ? "10px 10px 0px" : "10px 10px 0px",
+              height: h.left,
+              padding: "10px 10px 0px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
             }}
           >
-            {/* Scrollable messages */}
+            {/* Scrollable content */}
             <div
               className="flex-1 overflow-y-auto custom-scrollbar"
               style={{
@@ -135,7 +151,7 @@ export default function PanelTemplate({
               {Array.isArray(children) ? children.slice(0, -1) : children}
             </div>
 
-            {/* Input row fixed bottom */}
+            {/* Input row or bottom section */}
             <div style={{ marginTop: "0.25rem" }}>
               {Array.isArray(children) ? children[children.length - 1] : null}
             </div>
@@ -144,24 +160,25 @@ export default function PanelTemplate({
 
         {/* RIGHT COLUMN */}
         {rightColumn && (
-        <div
-          className="ai-glow-card rounded-2xl p-2 flex flex-col justify-between"
-          style={{
-            background: "var(--surface-2)",
-            color: "var(--ink)",
-            minHeight: isMobile ? HEIGHT_MIN_RIGHT_MOBILE : HEIGHT_RIGHT_DESKTOP,
-            maxHeight: isMobile ? HEIGHT_MAX_RIGHT_MOBILE : HEIGHT_RIGHT_DESKTOP,
-            height: "auto", // ✅ let it grow until maxHeight
-            overflowY: "auto",
-            overflowX: "hidden",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
-        >
-          {rightColumn}
-        </div>
-      )}
-
+          <div
+            className="ai-glow-card rounded-2xl flex flex-col justify-between"
+            style={{
+              background: "var(--surface-2)",
+              color: "var(--ink)",
+              height: h.right, // ✅ synced height
+              padding: "10px 10px 0px", // ✅ same as left
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              overflowY: "auto",
+              overflowX: "hidden",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
+            {rightColumn}
+          </div>
+        )}
       </div>
     </div>
   );

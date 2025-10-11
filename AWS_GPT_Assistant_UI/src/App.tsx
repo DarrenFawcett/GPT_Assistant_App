@@ -9,6 +9,28 @@ import { motion } from "framer-motion";
 import "./index.css";
 import "./styles/scrollbar-chips.css";
 
+// Debug environment check
+console.log("🌍 Current API Base:", import.meta.env.VITE_API_BASE);
+console.log("🧪 Environment Mode:", import.meta.env.MODE);
+
+// Test Chat API connection
+fetch(`${import.meta.env.VITE_API_BASE}/chat`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: "chat",
+    messages: [
+      { role: "system", content: "You are a test assistant." },
+      { role: "user", content: "Hello from dev!" }
+    ]
+  }),
+})
+  .then((res) => res.json())
+  .then((data) => console.log("🧠 Chat Lambda response:", data))
+  .catch((err) => console.error("❌ Chat Lambda error:", err));
+
+
+// Main Function
 export default function App() {
   const [activeTab, setActiveTab] = useState<
     "chat" | "calendar" | "todo" | "notes" | "email"

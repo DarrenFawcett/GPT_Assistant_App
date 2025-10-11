@@ -181,3 +181,8 @@ Planned additions:
 - ✅ Basic Auth via CloudFront  
 - 🔐 Environment variables setup  
 - 🌐 Custom domain + HTTPS support  
+
+
+🧭 Vision Alignment
+
+While tools like Motion automate scheduling and task allocation, the GPT Assistant goes a step further — it connects context, intent, and data across every part of life. Instead of just managing time, it manages meaning. It links chats, documents, receipts, notes, and calendar events through a unified system that understands relationships between them. This isn’t just an AI calendar — it’s a personal intelligence layer designed to think with you, not for you. Where Motion saves hours, GPT Assistant builds clarity, connecting every decision, reminder, and idea into one living network of context.
