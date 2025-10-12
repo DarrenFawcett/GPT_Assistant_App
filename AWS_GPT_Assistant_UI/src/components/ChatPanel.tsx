@@ -2,6 +2,14 @@ import { useRef, useState, useEffect } from 'react';
 import { TypingDots } from '../styles/ThemeStyles';
 import InputRow from './InputRow';
 import { CHAT_URL } from '../config/api';
+import { useTempUpload } from "../hooks/useTempUpload";
+import { uploadDirectToS3 } from "../utils/uploadToS3";
+
+// Temporary presigned URL generator (until Lambda is live)
+async function getPresignedUrl(fileName: string): Promise<string> {
+  // No signature, direct PUT to bucket (only works if bucket allows public PUT)
+  return `https://kai-assistant-data-2448.s3.eu-west-2.amazonaws.com/user/df_001/temp/${fileName}`;
+}
 
 // ---------------------------
 // 📏 Responsive screen size hook
@@ -49,72 +57,74 @@ export default function ChatPanel({
   ]);
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
-  const [tempFiles, setTempFiles] = useState<File[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
 
   const [isRecording] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const screen = useScreenSize();
   const h = HEIGHTS[screen];
   const isLarge = screen === 'lg';
 
-  const handleFilePick = () => fileInputRef.current?.click();
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      setTempFiles((prev) => [
-        ...prev,
-        ...files.filter((f) => !prev.some((p) => p.name === f.name)),
-      ]);
+  const {
+    tempFiles,
+    handleFilePick,
+    handleFileChange,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    removeTempFile,
+    clearTempFiles,   
+    fileInputRef,
+    isDragging,
+  } = useTempUpload();
 
-      console.log(
-        '📎 Added to temp memory:',
-        files.map((f) => f.name)
-      );
-    }
-  };
 
-  const addMessage = async () => {
+  const handleSend = async () => {
     const text = input.trim();
-    if (!text) return;
-    setMessages((prev) => [...prev, { role: 'user', text }]);
-    setInput('');
-    onSend?.(text);
+    if (!text && tempFiles.length === 0) return;
+
+    setMessages((prev) => [...prev, { role: "user", text }]);
+    setInput("");
     setIsThinking(true);
+
     try {
+      // 1️⃣ Upload files first (to /temp)
+      const uploadedFiles: string[] = [];
+      for (const file of tempFiles) {
+        const presignedUrl = await getPresignedUrl(file.name); // 🔹 from Lambda (next step)
+        await uploadDirectToS3(file, presignedUrl);
+        uploadedFiles.push(file.name);
+        console.log("✅ Uploaded:", file.name);
+      }
+
+      // 2️⃣ Send message + file info to your Lambda
       const payload = {
-        tab: 'Chat',
+        tab: "Chat",
         message: text,
-        attachments: tempFiles.map((f) => ({
-          name: f.name,
-          type: f.type,
-          size: f.size,
-        })),
+        attachments: uploadedFiles,
       };
+
       const res = await fetch(CHAT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       const data = await res.json();
-      const reply = data.reply || '🤔 No clear reply.';
-      setMessages((prev) => [...prev, { role: 'assistant', text: reply }]);
-    } catch {
+      const reply = data.reply || "🤔 No clear reply.";
+      setMessages((prev) => [...prev, { role: "assistant", text: reply }]);
+    } catch (err) {
+      console.error("❌ Error sending message:", err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', text: '⚠️ Error talking to GPT' },
+        { role: "assistant", text: "⚠️ Error sending message" },
       ]);
     } finally {
       setIsThinking(false);
-      setTempFiles([]); // ✅ clear temp memory after sending
+      clearTempFiles(); // 🧹 remove uploaded files
     }
   };
 
-  const removeTempFile = (name: string) => {
-    setTempFiles((prev) => prev.filter((f) => f.name !== name));
-  };
 
   return (
     <div className='grid grid-cols-1 md:grid-cols-3 gap-4 px-2 py-4 h-full'>
@@ -167,7 +177,7 @@ export default function ChatPanel({
             placeholder='Ask anything… e.g., "Add dentist 9 Dec 3pm"'
             value={input}
             onChange={setInput}
-            onSubmit={addMessage}
+            onSubmit={handleSend}
             showUpload
             showMic
             isRecording={isRecording}
@@ -222,30 +232,10 @@ export default function ChatPanel({
           </div>
 
           <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!isDragging) setIsDragging(true);
-            }}
-            onDragLeave={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDragging(false);
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsDragging(false);
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
 
-              const files = Array.from(e.dataTransfer.files || []);
-              if (files.length > 0) {
-                setTempFiles((prev) => [
-                  ...prev,
-                  ...files.filter((f) => !prev.some((p) => p.name === f.name)),
-                ]);
-                console.log("📂 Files dropped:", files.map((f) => f.name));
-              }
-            }}
             className={`border-2 border-dashed rounded-xl p-4 text-center transition flex flex-col items-center justify-center gap-2
               ${
                 isDragging
