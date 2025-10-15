@@ -6,10 +6,10 @@ import { useTempUpload } from "../hooks/useTempUpload";
 import { uploadDirectToS3 } from "../utils/uploadToS3";
 
 // Temporary presigned URL generator (until Lambda is live)
-async function getPresignedUrl(fileName: string): Promise<string> {
-  // No signature, direct PUT to bucket (only works if bucket allows public PUT)
-  return `https://kai-assistant-data-2448.s3.eu-west-2.amazonaws.com/user/df_001/temp/${fileName}`;
+async function getPresignedUrl(fileName: string, folderType: string): Promise<string> {
+  return `https://kai-assistant-data-2448.s3.eu-west-2.amazonaws.com/user/df_001/uploads/${folderType}/${fileName}`;
 }
+
 
 // ---------------------------
 // 📏 Responsive screen size hook
@@ -73,37 +73,60 @@ export default function ChatPanel({
     handleDragLeave,
     handleDrop,
     removeTempFile,
-    clearTempFiles,   
+    clearTempFiles,
     fileInputRef,
     isDragging,
-  } = useTempUpload();
+    uploadFileWithMetadata,  // 👈 add this line
+  } = useTempUpload("documents");
+
+
 
 
   const handleSend = async () => {
-    const text = input.trim();
-    if (!text && tempFiles.length === 0) return;
+  const text = input.trim();
+  const hasFile = tempFiles.length > 0;
 
-    setMessages((prev) => [...prev, { role: "user", text }]);
+  // 🧠 1️⃣ User must enter message or attach file
+  if (!text && !hasFile) return;
+
+  setMessages((prev) => [...prev, { role: "user", text: text || "(file upload)" }]);
     setInput("");
     setIsThinking(true);
 
     try {
-      // 1️⃣ Upload files first (to /temp)
       const uploadedFiles: string[] = [];
-      for (const file of tempFiles) {
-        const presignedUrl = await getPresignedUrl(file.name); // 🔹 from Lambda (next step)
-        await uploadDirectToS3(file, presignedUrl);
-        uploadedFiles.push(file.name);
-        console.log("✅ Uploaded:", file.name);
+
+      // 🗂️ 2️⃣ If a file is attached, handle upload
+      if (hasFile) {
+        for (const file of tempFiles) {
+          const presignedUrl = await getPresignedUrl(file.name, "documents");
+
+          // 🧾 Metadata
+          const metadata = {
+            user: "df_001",
+            tab: "chat",
+            message: text || "no message provided",
+            timestamp: new Date().toISOString(),
+            original_name: file.name,
+            upload_id: `df_001_${new Date().toISOString().replace(/[:.]/g, "-")}_${file.name}`,
+          };
+
+          console.log("🧩 Metadata being sent:", metadata);
+
+          await uploadDirectToS3(file, presignedUrl, metadata);
+          uploadedFiles.push(file.name);
+        }
+
+        // ✅ Once upload done, stop here — Chat Lambda not needed
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", text: "✅ File uploaded successfully to S3 — metadata stored." },
+        ]);
+        return; // 🔥 skip Chat Lambda entirely
       }
 
-      // 2️⃣ Send message + file info to your Lambda
-      const payload = {
-        tab: "Chat",
-        message: text,
-        attachments: uploadedFiles,
-      };
-
+      // 💬 3️⃣ Otherwise — standard chat message flow
+      const payload = { tab: "Chat", message: text };
       const res = await fetch(CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,9 +144,10 @@ export default function ChatPanel({
       ]);
     } finally {
       setIsThinking(false);
-      clearTempFiles(); // 🧹 remove uploaded files
+      clearTempFiles();
     }
   };
+
 
 
   return (

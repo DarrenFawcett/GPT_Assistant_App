@@ -1,4 +1,3 @@
-// src/components/TabContent.tsx
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ChatPanel from "./ChatPanel";
@@ -6,8 +5,10 @@ import CalendarPanel from "./CalendarPanel";
 import TodoPanel from "./TodoPanel";
 import NotesPanel from "./NotesPanel";
 import EmailPanel from "./EmailPanel";
+import TaxClaimPanel from "./TaxClaimPanel"; // 🧾 new import
 
-type TabType = "chat" | "calendar" | "todo" | "notes" | "email";
+// add "taxclaim"
+type TabType = "chat" | "calendar" | "todo" | "notes" | "email" | "taxclaim";
 
 // ✨ Reusable animation variants
 const variants = {
@@ -44,7 +45,6 @@ const variants = {
 };
 
 export default function TabContent({ activeTab }: { activeTab: TabType }) {
-  // ✅ Keep all tab components mounted in memory
   const panels = useMemo(
     () => ({
       chat: <ChatPanel />,
@@ -52,12 +52,12 @@ export default function TabContent({ activeTab }: { activeTab: TabType }) {
       todo: <TodoPanel />,
       notes: <NotesPanel />,
       email: <EmailPanel />,
+      taxclaim: <TaxClaimPanel />, // 🧾 added
     }),
     []
   );
 
-  // 🎬 Choose which variant to use here
-  const currentVariant = variants.flip3D; // 👉 change to scalePop / swipeSlide / gentleFade / flip3D
+  const currentVariant = variants.flip3D;
 
   return (
     <div className="relative h-full rounded-xl overflow-hidden p-4">

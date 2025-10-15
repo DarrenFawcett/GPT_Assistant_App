@@ -32,7 +32,11 @@ curl -X POST "https://mwhut1gvcf.execute-api.eu-west-2.amazonaws.com/prod/calend
 cd for github:
 
 
-  PS C:\Users\User\OneDrive\Desktop\CURRENT-PROJECTS\GPT-Assitant_App>
+  cd "C:\Users\User\OneDrive\Desktop\CURRENT-PROJECTS\GPT-Assitant_App"
+  git add .
+  git commit -m "Added TaxClaim tab, updated ChatPanel upload logic with metadata and S3 integration"
+  git push origin main
+
 
 
 
