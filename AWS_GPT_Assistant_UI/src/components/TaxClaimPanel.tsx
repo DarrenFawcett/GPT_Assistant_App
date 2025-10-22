@@ -2,7 +2,8 @@ import { useRef, useState, useEffect } from "react";
 import { TypingDots } from "../styles/ThemeStyles";
 import InputRow from "./InputRow";
 import { useTempUpload } from "../hooks/useTempUpload";
-import { uploadDirectToS3 } from "../utils/uploadToS3";
+import { uploadToS3 } from "../utils/uploadToS3";
+
 
 // Temporary presigned URL generator (until Lambda is live)
 async function getPresignedUrl(fileName: string, folderType: string): Promise<string> {

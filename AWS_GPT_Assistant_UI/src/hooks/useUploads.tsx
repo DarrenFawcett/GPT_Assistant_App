@@ -1,57 +1,36 @@
-import { useState, useRef, useCallback } from 'react';
+// src/hooks/useUploads.ts
+import { useState } from "react";
+import { uploadToS3 } from "../utils/uploadToS3";
 
-export type UploadItem = {
-  id: string;
-  name: string;
-  size: number;
-  status: 'queued' | 'uploading' | 'uploaded' | 'error';
-};
-
-export function useUploads() {
-  const [uploads, setUploads] = useState<UploadItem[]>([]);
+export function useUploads(user: string, tab: string) {
+  const [uploads, setUploads] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const openFilePicker = () => fileInputRef.current?.click();
+  async function handleFiles(files: FileList | null) {
+    if (!files) return;
 
-  const handleFiles = async (files: FileList | null, onUploaded?: (msg: string) => void) => {
-    if (!files?.length) return;
     setIsUploading(true);
 
-    const items: UploadItem[] = Array.from(files).map((f) => ({
-      id: crypto.randomUUID(),
-      name: f.name,
-      size: f.size,
-      status: 'uploaded',
-    }));
+    for (const file of Array.from(files)) {
+      try {
+        const message = `Upload from ${tab}`;
+        const result = await uploadToS3(file, user, tab, message);
 
-    await new Promise((r) => setTimeout(r, 800));
-    setUploads((u) => [...items, ...u]);
-    setIsUploading(false);
-
-    if (onUploaded) {
-      onUploaded(`✅ (Mock) ${files.length} file(s) sent to S3 bucket`);
+        setUploads((prev) => [
+          ...prev,
+          { id: result.upload_id, name: file.name, size: file.size, status: "uploaded" },
+        ]);
+      } catch (err) {
+        console.error("❌ Upload failed:", err);
+        setUploads((prev) => [
+          ...prev,
+          { id: file.name, name: file.name, size: file.size, status: "error" },
+        ]);
+      }
     }
-  };
 
-  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>, onUploaded?: (msg: string) => void) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleFiles(e.dataTransfer.files, onUploaded);
-  }, []);
+    setIsUploading(false);
+  }
 
-  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  return {
-    uploads,
-    isUploading,
-    fileInputRef,
-    openFilePicker,
-    handleFiles,
-    onDrop,
-    onDragOver,
-  };
+  return { uploads, isUploading, handleFiles };
 }

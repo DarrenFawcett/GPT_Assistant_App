@@ -1,0 +1,127 @@
+import boto3
+import json
+import time
+
+s3 = boto3.client("s3")
+ddb = boto3.client("dynamodb")
+
+BUCKET = "kai-assistant-data-2448"
+TABLE = "kai-assistant-data"
+
+
+def lambda_handler(event, context):
+    print("Incoming event:", json.dumps(event))
+
+    # Extract parameters
+    params = event.get("queryStringParameters") or event
+    user = (params.get("user") or "").strip()
+    tab = (params.get("tab") or "documents").lower().strip()
+    upload_id = (params.get("upload_id") or "").strip()
+
+    if not (user and upload_id):
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": "Missing user or upload_id"})
+        }
+
+    # ---------------------------
+    # Step 0️⃣ - Build key and check S3 existence
+    # ---------------------------
+    folder = "receipts" if tab == "claimtax" else "documents"
+    key = f"user/{user}/uploads/{folder}/{upload_id}"
+    print(f"🔍 Checking S3 object: {key}")
+
+    try:
+        s3.head_object(Bucket=BUCKET, Key=key)
+        print("✅ File exists in S3.")
+        s3_exists = True
+    except s3.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "404":
+            print("❌ File not found in S3.")
+            s3_exists = False
+        else:
+            raise
+
+    if not s3_exists:
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "status": "missing",
+                "message": "⚠️ File not found in S3 yet."
+            })
+        }
+
+    # ---------------------------
+    # Step 1️⃣ - Wait for S3 Tag = processed
+    # ---------------------------
+    s3_status = "pending"
+    for attempt in range(6):
+        try:
+            tag_data = s3.get_object_tagging(Bucket=BUCKET, Key=key)
+            tags = {t["Key"]: t["Value"] for t in tag_data.get("TagSet", [])}
+            s3_status = tags.get("Status", "pending")
+            print(f"🪣 S3 tag check {attempt+1}: {s3_status}")
+            if s3_status == "processed":
+                break
+        except Exception as e:
+            print(f"⚠️ Tag read failed ({attempt+1}):", e)
+        time.sleep(1)
+
+    # ---------------------------
+    # Step 2️⃣ - Verify DynamoDB record actually exists
+    # ---------------------------
+    ddb_status = "missing"
+    gpt_title = ""
+    try:
+        resp = ddb.get_item(
+            TableName=TABLE,
+            Key={
+                "user_id": {"S": user},
+                "file_id": {"S": upload_id}
+            }
+        )
+        item = resp.get("Item")
+        if item:
+            ddb_status = item.get("status", {}).get("S", "")
+            gpt_title = item.get("gpt_title", {}).get("S", "")
+        print(f"🗃️ DynamoDB check: {ddb_status} {gpt_title}")
+    except Exception as e:
+        print("⚠️ DynamoDB lookup failed:", e)
+
+    # ---------------------------
+    # Step 3️⃣ - Final decision logic
+    # ---------------------------
+    s3_link = f"https://{BUCKET}.s3.eu-west-2.amazonaws.com/{key}"
+    title = gpt_title or upload_id or "Unknown File"
+
+    # ✅ Only succeed if BOTH S3 + DDB are verified processed
+    if s3_status == "processed" and ddb_status == "processed":
+        combined_status = "processed"
+        message = (
+            f"✅ Upload confirmed and fully processed.\n\n"
+            f"📦 **S3:** File verified and tagged as processed.\n"
+            f"🗃️ **DynamoDB:** Record found and status = processed.\n\n"
+            f"**{title}**\n\n"
+            f"[📎 View File in S3]({s3_link})"
+        )
+    elif s3_status == "processed" and ddb_status in ("processing", "pending"):
+        combined_status = "processing"
+        message = "⏳ Upload stored in S3 — DynamoDB still updating."
+    elif s3_status != "processed" and ddb_status == "processed":
+        combined_status = "processing"
+        message = "⏳ DynamoDB ready — waiting for S3 tagging update."
+    else:
+        combined_status = "pending"
+        message = "⏳ Upload received but still processing — please check again soon."
+
+    result = {
+        "status": combined_status,
+        "s3_status": s3_status,
+        "ddb_status": ddb_status,
+        "gpt_title": title,
+        "s3_link": s3_link,
+        "message": message
+    }
+
+    print("✅ Final confirmation:", json.dumps(result))
+    return {"statusCode": 200, "body": json.dumps(result)}

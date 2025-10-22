@@ -34,7 +34,7 @@ cd for github:
 
   cd "C:\Users\User\OneDrive\Desktop\CURRENT-PROJECTS\GPT-Assitant_App"
   git add .
-  git commit -m "Added TaxClaim tab, updated ChatPanel upload logic with metadata and S3 integration"
+  git commit -m "ADD MESSAGE"
   git push origin main
 
 

@@ -1,0 +1,208 @@
+import boto3
+import json
+import openai
+from openai import OpenAI
+
+# -------------------------------
+# 🔑 Secrets + Clients
+# -------------------------------
+def get_openai_key():
+    secret_name = "openai/api-key"
+    client = boto3.client("secretsmanager")
+    response = client.get_secret_value(SecretId=secret_name)
+    return json.loads(response["SecretString"])["OPENAI_API_KEY"]
+
+openai.api_key = get_openai_key()
+s3 = boto3.client("s3")
+ddb = boto3.client("dynamodb")
+
+# -------------------------------
+# 🧠 GPT Summariser
+# -------------------------------
+def call_gpt_extract(message, original_name="Unknown File"):
+    system_prompt = """
+    You are a text parser that extracts structured information about uploaded files.
+    Always return valid JSON with:
+      - gpt_title
+      - gpt_tags (list)
+      - gpt_summary
+    """
+
+    try:
+        client = OpenAI(api_key=openai.api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message},
+            ],
+            temperature=0.2,
+            max_tokens=200,
+        )
+        result_text = response.choices[0].message.content
+        result_json = json.loads(result_text)
+
+        # Validate required fields
+        if not result_json.get("gpt_title") or not result_json.get("gpt_summary"):
+            raise ValueError("GPT returned incomplete data.")
+
+        return result_json
+
+    except Exception as e:
+        print(f"⚠️ GPT Error: {e}")
+        # fallback still returns a valid structure
+        return {
+            "gpt_title": f"Auto-summary: {original_name}",
+            "gpt_tags": ["fallback"],
+            "gpt_summary": f"GPT failed or timed out. Using file name instead. ({e})",
+        }
+
+# -------------------------------
+# 💾 DDB + S3 Write
+# -------------------------------
+def process_and_save(bucket, key, meta):
+    table_name = "kai-assistant-data"
+    message = meta.get("message", "")
+    user = meta.get("user", "unknown")
+    upload_id = meta.get("upload_id", key)
+    original_name = meta.get("original_name", key.split("/")[-1])
+    timestamp = meta.get("timestamp", "unknown")
+
+    if not message:
+        raise Exception("Missing 'message' metadata — cannot process file.")
+
+    # 🧠 1️⃣ GPT Analysis (with fallback)
+    gpt_result = call_gpt_extract(message, original_name)
+
+    # ✅ Ensure GPT produced valid dict
+    if not isinstance(gpt_result, dict):
+        raise Exception("GPT returned non-dict result — invalid format.")
+
+    # 💾 2️⃣ DynamoDB Write
+    item = {
+        "user_id": {"S": user},
+        "file_id": {"S": upload_id},
+        "original_name": {"S": original_name},
+        "message": {"S": message},
+        "tab": {"S": meta.get("tab", "chat")},
+        "timestamp": {"S": timestamp},
+        "status": {"S": "processed"},
+        "source": {"S": "lambda-gpt-processor"},
+        "s3_path": {"S": f"s3://{bucket}/{key}"},
+        "gpt_title": {"S": gpt_result.get("gpt_title", "Untitled")},
+        "gpt_tags": {"S": json.dumps(gpt_result.get("gpt_tags", []))},
+        "gpt_summary": {"S": gpt_result.get("gpt_summary", "")},
+        "gpt_result_raw": {"S": json.dumps(gpt_result)},
+    }
+
+    try:
+        ddb.put_item(TableName=table_name, Item=item)
+        print(f"✅ DynamoDB write successful for {key}")
+    except Exception as e:
+        print(f"❌ DynamoDB Write Error: {e}")
+        raise  # 🚨 Crash intentionally — DLQ must catch it
+
+    # 🏷️ 3️⃣ Tag S3 object
+    try:
+        s3.put_object_tagging(
+            Bucket=bucket,
+            Key=key,
+            Tagging={
+                "TagSet": [
+                    {"Key": "Status", "Value": "processed"},
+                    {"Key": "Tab", "Value": meta.get("tab", "chat")},
+                    {
+                        "Key": "GPT_Tags",
+                        "Value": "-".join(
+                            [t.replace(" ", "_") for t in gpt_result.get("gpt_tags", [])]
+                        )[:128],
+                    },
+                ]
+            },
+        )
+        print(f"🏷️ S3 tagging complete for {key}")
+    except Exception as e:
+        print(f"⚠️ Tagging Error (non-critical): {e}")
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps(
+            {
+                "route": meta.get("tab", "chat"),
+                "file": key,
+                "gpt_result": gpt_result,
+            }
+        ),
+    }
+
+# -------------------------------
+# 🧩 Route Handlers
+# -------------------------------
+def handle_chat(bucket, key, meta):
+    print("💬 Handling chat upload...")
+    return process_and_save(bucket, key, meta)
+
+def handle_taxclaim(bucket, key, meta):
+    print("💼 Handling tax claim upload...")
+    return process_and_save(bucket, key, meta)
+
+# -------------------------------
+# 🚀 Main Handler
+# -------------------------------
+def lambda_handler(event, context):
+    print("📥 Incoming event:", json.dumps(event, indent=2))
+
+    def extract_s3_details(record):
+        try:
+            if record.get("eventSource") == "aws:s3":
+                return record["s3"]["bucket"]["name"], record["s3"]["object"]["key"]
+            if record.get("EventSource") == "aws:sns":
+                sns_message = json.loads(record["Sns"]["Message"])
+                inner = sns_message["Records"][0]
+                return inner["s3"]["bucket"]["name"], inner["s3"]["object"]["key"]
+            if record.get("eventSource") == "aws:sqs":
+                body = json.loads(record["body"])
+                inner = body["Records"][0]
+                return inner["s3"]["bucket"]["name"], inner["s3"]["object"]["key"]
+        except Exception as e:
+            print(f"⚠️ Failed to extract S3 details: {e}")
+        return None, None
+
+    # Manual test event
+    if "Records" not in event:
+        print("⚙️ Manual test route")
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": "Manual mode — no Records found."}),
+        }
+
+    # Process each record
+    for record in event["Records"]:
+        bucket, key = extract_s3_details(record)
+        if not bucket or not key:
+            print("⚠️ No S3 details found, skipping record.")
+            continue
+
+        print(f"📦 Processing file: s3://{bucket}/{key}")
+
+        try:
+            head = s3.head_object(Bucket=bucket, Key=key)
+            meta = head.get("Metadata", {})
+            route = meta.get("tab", "chat")
+
+            print(f"🧾 Metadata: {json.dumps(meta, indent=2)}")
+            print(f"🔀 Route selected: {route}")
+
+            if route == "taxclaim":
+                result = handle_taxclaim(bucket, key, meta)
+            else:
+                result = handle_chat(bucket, key, meta)
+
+            print(f"✅ Processing complete for {key}")
+            return result
+
+        except Exception as e:
+            print(f"🔥 Lambda failed for {key}: {e}")
+            raise  # 🚨 Force crash → DLQ
+
+    return {"statusCode": 200, "body": json.dumps({"message": "All records processed."})}
