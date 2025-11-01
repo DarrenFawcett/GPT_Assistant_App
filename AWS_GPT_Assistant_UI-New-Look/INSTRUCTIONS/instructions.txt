@@ -1,0 +1,89 @@
+# Get the server working
+
+cd assistant-core
+node server.mjs
+
+-------------------------------
+
+# Run the website
+
+npm run dev
+
+
+
+
+--------------------------------
+
+tests:
+
+curl -X POST "https://mwhut1gvcf.execute-api.eu-west-2.amazonaws.com/prod/calendar" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tab": "Calendar",
+    "messages": [
+      { "role": "user", "content": "When is my next dentist appointment?" }
+    ]
+  }'
+
+
+
+--------------------------------
+
+cd for github:
+
+
+  cd "C:\Users\User\OneDrive\Desktop\CURRENT-PROJECTS\GPT-Assitant_App"
+  git add .
+  git commit -m "ADD MESSAGE"
+  git push origin main
+
+
+
+
+
+
+
+
+
+  /* ============================================ */
+/* Smooth horizontal scroll for event chips */
+/* ============================================ */
+.chip-rotator {
+  display: flex;
+  align-items: center;
+  height: 2rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.chip-item {
+  display: inline-block;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-style: italic;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+
+.chip-item.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+@keyframes fadeChip {
+  0% { opacity: 0; transform: translateY(8px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+
+.chip-item {
+  animation: fadeChip 2.5s ease-in-out infinite;
+}
+
