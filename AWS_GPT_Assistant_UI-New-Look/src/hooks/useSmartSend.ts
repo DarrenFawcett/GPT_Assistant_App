@@ -63,7 +63,7 @@ export function useSmartSend({
             console.log("✅ Upload complete:", result.key);
 
             // ⏱ Small delay before confirm (S3 metadata settle)
-            await new Promise((r) => setTimeout(r, 5000));
+            await new Promise((r) => setTimeout(r, 3000));
 
             // 📡 Confirm with the exact same uploadId
             const confirm = await confirmUpload(

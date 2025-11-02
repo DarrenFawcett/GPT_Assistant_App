@@ -31,9 +31,11 @@ export async function confirmUpload(
       message: data.message || "✅ Upload confirmed.",
       gpt_title: data.gpt_title || "",
       gpt_summary: data.gpt_summary || "",
+      s3_link: data.s3_link || null, // ✅ ADD HERE
       tab,
       upload_id: uploadId,
     };
+    ;
   } catch (err) {
     console.error("⚠️ Confirm check failed:", err);
     return {

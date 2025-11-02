@@ -2,11 +2,10 @@ import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import { TypingDots } from "./TypingDots";
 
-
 export default function ChatMessages({
   messages = [],
   isThinking = false,
-  isUploading = false,     
+  isUploading = false,
 }: {
   messages: { role: string; text: string }[];
   isThinking?: boolean;
@@ -61,7 +60,21 @@ export default function ChatMessages({
                   lineHeight: "1.55",
                 }}
               >
-                <ReactMarkdown>{m.text}</ReactMarkdown>
+                {/* ✅ Markdown renderer with link override */}
+                <ReactMarkdown
+                  components={{
+                    a: ({ node, ...props }) => (
+                      <a
+                        {...props}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sky-400 hover:text-sky-300 underline"
+                      />
+                    ),
+                  }}
+                >
+                  {m.text}
+                </ReactMarkdown>
               </div>
             </div>
           );
