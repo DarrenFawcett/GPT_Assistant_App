@@ -1,5 +1,5 @@
 // src/components/Tab_Panel/ChatPanel.tsx
-export default function NotesPanel() {
+export default function IdeasPanel() {
   return (
     <div className="ai-glow-card p-4">
       💬 Chat Panel — rebuilding soon.

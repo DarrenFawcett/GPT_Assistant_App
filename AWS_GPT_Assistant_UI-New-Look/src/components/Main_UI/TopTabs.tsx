@@ -8,13 +8,13 @@ import {
 } from "lucide-react";
 import React from "react";
 
-export type TabType = "chat" | "calendar" | "todo" | "notes" | "email" | "taxclaim";
+export type TabType = "chat" | "calendar" | "todo" | "ideas" | "email" | "taxclaim";
 
 const tabOptions: { name: string; key: TabType; icon: React.ReactNode }[] = [
   { name: "Chat", key: "chat", icon: <MessageSquare className="w-4 h-4" /> },
   { name: "Calendar", key: "calendar", icon: <CalendarDays className="w-4 h-4" /> },
   { name: "To-Do", key: "todo", icon: <ListTodo className="w-4 h-4" /> },
-  { name: "Notes", key: "notes", icon: <NotebookText className="w-4 h-4" /> },
+  { name: "Ideas", key: "ideas", icon: <NotebookText className="w-4 h-4" /> },
   { name: "Email", key: "email", icon: <Mail className="w-4 h-4" /> },
   { name: "Tax Claim", key: "taxclaim", icon: <ReceiptText className="w-4 h-4" /> },
 ];

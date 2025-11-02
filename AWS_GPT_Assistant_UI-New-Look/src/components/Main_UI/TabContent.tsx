@@ -5,13 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import ChatPanel from "../Tab_Panel/ChatPanel";
 import CalendarPanel from "../Tab_Panel/CalendarPanel";
 import TodoPanel from "../Tab_Panel/TodoPanel";
-import NotesPanel from "../Tab_Panel/NotesPanel";
+import IdeasPanel from "../Tab_Panel/IdeasPanel";
 import EmailPanel from "../Tab_Panel/EmailPanel";
 import TaxClaimPanel from "../Tab_Panel/TaxClaimPanel"; // 🧾 new import
 
 
 // add "taxclaim"
-type TabType = "chat" | "calendar" | "todo" | "notes" | "email" | "taxclaim";
+type TabType = "chat" | "calendar" | "todo" | "ideas" | "email" | "taxclaim";
 
 // ✨ Reusable animation variants
 const variants = {
@@ -53,7 +53,7 @@ export default function TabContent({ activeTab }: { activeTab: TabType }) {
       chat: <ChatPanel />,
       calendar: <CalendarPanel />,
       todo: <TodoPanel />,
-      notes: <NotesPanel />,
+      ideas: <IdeasPanel />,
       email: <EmailPanel />,
       taxclaim: <TaxClaimPanel />, // 🧾 added
     }),

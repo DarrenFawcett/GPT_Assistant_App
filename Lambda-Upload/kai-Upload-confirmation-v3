@@ -1,0 +1,125 @@
+import boto3
+import json
+import time
+
+s3 = boto3.client("s3")
+ddb = boto3.client("dynamodb")
+
+BUCKET = "kai-assistant-data-2448"
+TABLE = "kai-assistant-data"
+
+
+# -------------------------------
+# 🧩 Retry helpers
+# -------------------------------
+def wait_for_s3_object(bucket, key, retries=5, delay=3):
+    """Wait until object exists and tags are readable."""
+    for attempt in range(1, retries + 1):
+        try:
+            s3.head_object(Bucket=bucket, Key=key)
+            print(f"✅ S3 object found (attempt {attempt}/{retries})")
+
+            # Try to read tags (they may not appear instantly)
+            try:
+                tags = {t["Key"]: t["Value"] for t in s3.get_object_tagging(Bucket=bucket, Key=key)["TagSet"]}
+                print(f"🪣 Tags read (attempt {attempt}/{retries}): {tags}")
+                return True, tags.get("Status", "pending")
+            except Exception as tag_err:
+                print(f"⚠️ Could not read tags yet (attempt {attempt}/{retries}): {tag_err}")
+                return True, "pending"
+
+        except s3.exceptions.ClientError as e:
+            code = e.response["Error"]["Code"]
+            if code == "404":
+                print(f"❌ Not yet in S3 (attempt {attempt}/{retries})")
+            else:
+                print(f"⚠️ S3 check error: {e}")
+        time.sleep(delay)
+    return False, "missing"
+
+
+def wait_for_ddb_record(user, upload_id, retries=5, delay=3):
+    """Wait until DynamoDB record appears and is populated."""
+    for attempt in range(1, retries + 1):
+        try:
+            resp = ddb.get_item(
+                TableName=TABLE,
+                Key={"user_id": {"S": user}, "file_id": {"S": upload_id}},
+            )
+            item = resp.get("Item")
+            if item:
+                status = item.get("status", {}).get("S", "")
+                gpt_title = item.get("gpt_title", {}).get("S", "")
+                s3_link = item.get("s3_link", {}).get("S")
+                print(f"🗃️ DDB record found (attempt {attempt}/{retries}) → {status}")
+                return item, status, gpt_title, s3_link
+            else:
+                print(f"🗃️ No DDB record yet (attempt {attempt}/{retries})")
+        except Exception as e:
+            print(f"⚠️ DDB check failed (attempt {attempt}/{retries}): {e}")
+        time.sleep(delay)
+    return None, "missing", "", None
+
+
+# -------------------------------
+# 🚀 Main Lambda
+# -------------------------------
+def lambda_handler(event, context):
+    print("Incoming event:", json.dumps(event))
+    params = event.get("queryStringParameters") or event
+
+    user = (params.get("user") or "").strip()
+    tab = (params.get("tab") or "documents").lower().strip()
+    upload_id = (params.get("upload_id") or "").strip()
+
+    if not (user and upload_id):
+        return {"statusCode": 400, "body": json.dumps({"error": "Missing user or upload_id"})}
+
+    folder = "receipts" if tab == "claimtax" else "documents"
+    key = f"user/{user}/uploads/{folder}/{upload_id}"
+    s3_link = f"https://{BUCKET}.s3.eu-west-2.amazonaws.com/{key}"
+
+    # -------------------------------
+    # 1️⃣ Check S3 existence
+    # -------------------------------
+    s3_exists, _ = wait_for_s3_object(BUCKET, key, retries=3, delay=2)
+    if not s3_exists:
+        msg = "⚠️ File not found in S3 — upload may not have completed."
+        return {"statusCode": 200, "body": json.dumps({"status": "missing", "message": msg, "s3_link": s3_link})}
+
+    # -------------------------------
+    # 2️⃣ Check DynamoDB record (truth check)
+    # -------------------------------
+    item, ddb_status, gpt_title, ddb_link = wait_for_ddb_record(user, upload_id, retries=5, delay=3)
+    if not item:
+        msg = "⚠️ File uploaded but not yet recorded in DynamoDB."
+        return {"statusCode": 200, "body": json.dumps({"status": "processing", "message": msg, "s3_link": s3_link})}
+
+    # Prefer the DDB link if it exists
+    if ddb_link:
+        s3_link = ddb_link
+
+    # -------------------------------
+    # 3️⃣ Now verify S3 tagging (final confirmation)
+    # -------------------------------
+    _, s3_status = wait_for_s3_object(BUCKET, key, retries=5, delay=3)
+
+    # -------------------------------
+    # 4️⃣ Combine results
+    # -------------------------------
+    if ddb_status == "processed" and s3_status == "processed":
+        msg = "✅ Upload confirmed and processed successfully."
+        status = "processed"
+    elif ddb_status == "processed" and s3_status != "processed":
+        msg = "⚠️ DynamoDB record found, but S3 tagging incomplete."
+        status = "processing"
+    elif ddb_status != "processed":
+        msg = "⏳ Upload received — still being analysed."
+        status = "pending"
+    else:
+        msg = "⚠️ Unexpected state — check logs."
+        status = "unknown"
+
+    result = {"status": status, "message": msg, "s3_link": s3_link}
+    print("✅ Final:", json.dumps(result))
+    return {"statusCode": 200, "body": json.dumps(result)}
